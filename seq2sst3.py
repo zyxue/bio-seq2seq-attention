@@ -88,8 +88,8 @@ def tensors_from_pair(input_lang, output_lang, pair):
     return (input_tensor, target_tensor, seq_len)
 
 
-def train(input_tensor, target_tensor, seq_len, target_sos_index,
-          encoder, decoder, encoder_optimizer,
+def train(input_lang, output_lang, input_tensor, target_tensor, seq_len,
+          target_sos_index, encoder, decoder, encoder_optimizer,
           decoder_optimizer, criterion, teacher_forcing_ratio=0.5):
     encoder_hidden = encoder.initHidden()
 
@@ -146,8 +146,8 @@ def train(input_tensor, target_tensor, seq_len, target_sos_index,
     return loss.item() / target_length
 
 
-def trainIters(encoder, decoder, input_lang, output_lang, n_iters,
-               print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(encoder, decoder, input_lang, output_lang, target_sos_index,
+               n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
     print('training for {0} steps'.format(n_iters))
     print('collect loss for plotting per {0} steps'.format(plot_every))
 
@@ -172,6 +172,7 @@ def trainIters(encoder, decoder, input_lang, output_lang, n_iters,
         seq_len = training_pair[2]
 
         loss = train(
+            input_lang, output_lang,
             input_tensor, target_tensor, seq_len, target_sos_index,
             encoder, decoder, encoder_optimizer, decoder_optimizer,
             criterion
@@ -187,12 +188,61 @@ def trainIters(encoder, decoder, input_lang, output_lang, n_iters,
                 iter,
                 iter / n_iters * 100,
                 print_loss_avg))
+            evaluateRandomly(encoder, decoder, input_lang, output_lang, target_sos_index, 3)
 
         if iter % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
     # showPlot(plot_losses)
+
+
+def evaluate(encoder, decoder, input_lang, output_lang, target_sos_index,
+             sentence, seq_len, max_length=MAX_LENGTH):
+    with torch.no_grad():
+        input_tensor = tensor_from_sentence(input_lang, sentence)
+        input_length = input_tensor.size()[0]
+        encoder_hidden = encoder.initHidden()
+
+        encoder_outputs = torch.zeros(
+            max_length, encoder.hidden_size, device=DEVICE)
+
+        for ei in range(input_length):
+            encoder_output, encoder_hidden = encoder(
+                input_tensor[ei], encoder_hidden)
+            encoder_outputs[ei] += encoder_output[0, 0]
+
+        # SOS
+        decoder_input = torch.tensor([[target_sos_index]], device=DEVICE)
+
+        decoder_hidden = encoder_hidden
+
+        decoded_words = []
+        decoder_attentions = torch.zeros(max_length, max_length)
+
+        for di in range(seq_len):
+            decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            decoder_attentions[di] = decoder_attention.data
+            topv, topi = decoder_output.data.topk(1)
+            decoded_words.append(output_lang.index2word[topi.item()])
+
+            decoder_input = topi.squeeze().detach()
+
+        return decoded_words, decoder_attentions[:di + 1]
+
+
+def evaluateRandomly(encoder, decoder, input_lang, output_lang, target_sos_index, n=10):
+    for i in range(n):
+        input_seq, output_seq, seq_len = random.choice(pairs)
+        print('>', input_seq)
+        print('=', output_seq)
+        output_words, attentions = evaluate(
+            encoder, decoder, input_lang, output_lang, target_sos_index,
+            input_seq, seq_len)
+        output_sentence = ''.join(output_words)
+        print('<', output_sentence)
+        print('')
 
 
 if __name__ == "__main__":
