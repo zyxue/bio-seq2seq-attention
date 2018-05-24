@@ -148,6 +148,9 @@ def train(input_tensor, target_tensor, seq_len, target_sos_index,
 
 def trainIters(encoder, decoder, input_lang, output_lang, n_iters,
                print_every=1000, plot_every=100, learning_rate=0.01):
+    print('training for {0} steps'.format(n_iters))
+    print('collect loss for plotting per {0} steps'.format(plot_every))
+
     start = time.time()
     plot_losses = []
     print_loss_total = 0        # Reset every print_every
@@ -194,12 +197,16 @@ def trainIters(encoder, decoder, input_lang, output_lang, n_iters,
 
 if __name__ == "__main__":
     data_dir = '../tf_nmt/nmt_aa_data/Heffernan_2017_SPIDER3/tr_va_te/'
+    data_file = os.path.join(data_dir, 'tr.seq2sst3.pkl')
 
-    with open(os.path.join(data_dir, 'tr.seq2sst3.pkl'), 'rb') as inf:
+    print('reading data from {0}'.format(os.path.abspath(data_file)))
+    with open(data_file, 'rb') as inf:
         input_lang, output_lang, pairs = pickle.load(inf)
 
-    # filter too long seqs
-    pairs = [_ for _ in pairs if _[-1] < MAX_LENGTH]
+    print('filter out seqs longer than {0}'.format(MAX_LENGTH))
+    pairs = [_ for _ in pairs if _[-1] <= MAX_LENGTH]
+
+    print('data loaded...')
     print('training on {0} seqs'.format(len(pairs)))
 
     target_sos_index = output_lang.word2index['^']
