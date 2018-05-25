@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from utils import timeSince
 
 
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
 print('device: {0}'.format(DEVICE))
 
 MAX_LENGTH = 500
@@ -63,13 +64,13 @@ class AttnDecoderRNN(nn.Module):
             encoder_outputs.unsqueeze(0)
         )
 
-        output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.attn_combine(output).unsqueeze(0)
+        out = torch.cat((embedded[0], attn_applied[0]), 1)
+        out = self.attn_combine(out).unsqueeze(0)
 
-        output = F.relu(output)
-        output, hidden = self.gru(output, hidden)
+        out = F.relu(out)
+        out, hidden = self.gru(out, hidden)
 
-        output = F.log_softmax(self.out(output[0]), dim=1)
+        output = F.log_softmax(self.out(out[0]), dim=1)
         return output, hidden, attn_weights
 
     def initHidden(self):
@@ -81,167 +82,147 @@ def tensor_from_sentence(lang, sentence):
     return torch.tensor(indexes, dtype=torch.long, device=DEVICE).view(-1, 1)
 
 
-def tensors_from_pair(input_lang, output_lang, pair):
-    input_tensor = tensor_from_sentence(input_lang, pair[0])
-    target_tensor = tensor_from_sentence(output_lang, pair[1])
+def tensors_from_pair(src_lang, tgt_lang, pair):
+    src_tensor = tensor_from_sentence(src_lang, pair[0])
+    tgt_tensor = tensor_from_sentence(tgt_lang, pair[1])
     seq_len = pair[2]
-    return (input_tensor, target_tensor, seq_len)
+    return (src_tensor, tgt_tensor, seq_len)
 
 
-def train(input_lang, output_lang, input_tensor, target_tensor, seq_len,
-          target_sos_index, encoder, decoder, encoder_optimizer,
-          decoder_optimizer, criterion, teacher_forcing_ratio=0.5):
-    encoder_hidden = encoder.initHidden()
+def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
+          tgt_sos_index, enc_optim, dec_optim,
+          criterion, teacher_forcing_ratio=0.5):
+    enc_optim.zero_grad()
+    dec_optim.zero_grad()
 
-    encoder_optimizer.zero_grad()
-    decoder_optimizer.zero_grad()
+    # input_length = src_tensor.size(0)
+    # target_length = tgt_tensor.size(0)
 
-    input_length = input_tensor.size(0)
-    target_length = target_tensor.size(0)
+    # generate encoder outputs for src sequence. 
+    # outs indicates an array, out indicates a sinlge step output
+    enc_hid = enc.initHidden()
+    enc_outs = torch.zeros(MAX_LENGTH, enc.hidden_size, device=DEVICE)
+    for ei in range(seq_len):
+        enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
+        enc_outs[ei] = enc_out[0, 0]
 
-    encoder_outputs = torch.zeros(
-        MAX_LENGTH, encoder.hidden_size, device=DEVICE)
+    # take the hidden state from the last step in the encoder, continue in the
+    # decoder
+    dec_hid = enc_hid
+    # init the first input for the decoder
+    dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
+
+    # decide to use teacher forcing or not
+    use_tf = True if random.random() < teacher_forcing_ratio else False
 
     loss = 0
-
-    for ei in range(input_length):
-        encoder_output, encoder_hidden = encoder(
-            input_tensor[ei], encoder_hidden)
-        encoder_outputs[ei] = encoder_output[0, 0]
-
-    decoder_input = torch.tensor([[target_sos_index]], device=DEVICE)
-
-    decoder_hidden = encoder_hidden
-
-    if random.random() < teacher_forcing_ratio:
-        use_teacher_forcing = True
-    else:
-        use_teacher_forcing = False
-
-    if use_teacher_forcing:
-        # Teacher forcing: Feed the target as the next input
-        for di in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
-            loss += criterion(decoder_output, target_tensor[di])
-            # Teacher forcing
-            decoder_input = target_tensor[di]
+    if use_tf:
+        for di in range(seq_len):
+            dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
+            loss += criterion(dec_out, tgt_tensor[di])
+            dec_in = tgt_tensor[di]
 
     else:
-        # Without teacher forcing: use its own predictions as the next input
-        for di in range(target_length):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
-            topv, topi = decoder_output.topk(1)
-            # detach from history as input
-            decoder_input = topi.squeeze().detach()
-
-            loss += criterion(decoder_output, target_tensor[di])
+        for di in range(seq_len):
+            dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
+            topv, topi = dec_out.topk(1)
+            # Returns a new Tensor, detached from the current graph. The result
+            # will never require gradient.
+            # https://pytorch.org/docs/stable/autograd.html#torch.Tensor.detach
+            dec_in = topi.squeeze().detach()
+            loss += criterion(dec_out, tgt_tensor[di])
 
     loss.backward()
 
-    encoder_optimizer.step()
-    decoder_optimizer.step()
+    enc_optim.step()
+    dec_optim.step()
 
-    return loss.item() / target_length
+    return loss.item() / seq_len
 
 
-def trainIters(encoder, decoder, input_lang, output_lang, target_sos_index,
-               n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
+def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
+               print_every=1000, plot_every=100, learning_rate=0.01):
     print('training for {0} steps'.format(n_iters))
     print('collect loss for plotting per {0} steps'.format(plot_every))
 
     start = time.time()
     plot_losses = []
-    print_loss_total = 0        # Reset every print_every
-    plot_loss_total = 0         # Reset every plot_every
+    print_loss_total = 0
+    plot_loss_total = 0
 
-    encoder_optimizer = optim.SGD(encoder.parameters(), lr=learning_rate)
-    decoder_optimizer = optim.SGD(decoder.parameters(), lr=learning_rate)
+    enc_optim = optim.SGD(enc.parameters(), lr=learning_rate)
+    dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
 
-    training_pairs = [
-        tensors_from_pair(input_lang, output_lang, random.choice(pairs))
-        for i in range(n_iters)
-    ]
+    tr_pair_tensors = []
+    for i in range(n_iters):
+        tsr = tensors_from_pair(src_lang, tgt_lang, random.choice(pairs))
+        tr_pair_tensors.append(tsr)
+
     criterion = nn.NLLLoss()
 
-    for iter in range(1, n_iters + 1):
-        training_pair = training_pairs[iter - 1]
-        input_tensor = training_pair[0]
-        target_tensor = training_pair[1]
-        seq_len = training_pair[2]
+    for idx in range(1, n_iters + 1):
+        src_tensor, tgt_tensor, seq_len = tr_pair_tensors[idx - 1]
 
         loss = train(
-            input_lang, output_lang,
-            input_tensor, target_tensor, seq_len, target_sos_index,
-            encoder, decoder, encoder_optimizer, decoder_optimizer,
-            criterion
+            src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
+            tgt_sos_index, enc_optim, dec_optim, criterion
         )
         print_loss_total += loss
         plot_loss_total += loss
 
-        if iter % print_every == 0:
+        if idx % print_every == 0:
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (
-                timeSince(start, iter / n_iters),
-                iter,
-                iter / n_iters * 100,
+                timeSince(start, idx / n_iters),
+                idx,
+                idx / n_iters * 100,
                 print_loss_avg))
-            evaluateRandomly(encoder, decoder, input_lang, output_lang, target_sos_index, 3)
+            evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, 3)
 
-        if iter % plot_every == 0:
+        if idx % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
             plot_losses.append(plot_loss_avg)
             plot_loss_total = 0
     # showPlot(plot_losses)
 
 
-def evaluate(encoder, decoder, input_lang, output_lang, target_sos_index,
-             sentence, seq_len, max_length=MAX_LENGTH):
+def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index,
+             src_seq, seq_len, max_length=MAX_LENGTH):
     with torch.no_grad():
-        input_tensor = tensor_from_sentence(input_lang, sentence)
-        input_length = input_tensor.size()[0]
-        encoder_hidden = encoder.initHidden()
+        src_tensor = tensor_from_sentence(src_lang, src_seq)
 
-        encoder_outputs = torch.zeros(
-            max_length, encoder.hidden_size, device=DEVICE)
+        enc_hid = enc.initHidden()
+        enc_outs = torch.zeros(max_length, enc.hidden_size, device=DEVICE)
 
-        for ei in range(input_length):
-            encoder_output, encoder_hidden = encoder(
-                input_tensor[ei], encoder_hidden)
-            encoder_outputs[ei] += encoder_output[0, 0]
+        for ei in range(seq_len):
+            enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
+            enc_outs[ei] += enc_out[0, 0]
 
-        # SOS
-        decoder_input = torch.tensor([[target_sos_index]], device=DEVICE)
-
-        decoder_hidden = encoder_hidden
-
-        decoded_words = []
-        decoder_attentions = torch.zeros(max_length, max_length)
-
+        dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
+        dec_hid = enc_hid
+        dec_outs = []
+        dec_attns = torch.zeros(max_length, max_length)
         for di in range(seq_len):
-            decoder_output, decoder_hidden, decoder_attention = decoder(
-                decoder_input, decoder_hidden, encoder_outputs)
-            decoder_attentions[di] = decoder_attention.data
-            topv, topi = decoder_output.data.topk(1)
-            decoded_words.append(output_lang.index2word[topi.item()])
+            dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
+            dec_attns[di] = dec_attn.data
+            topv, topi = dec_out.data.topk(1)
+            dec_outs.append(tgt_lang.index2word[topi.item()])
 
-            decoder_input = topi.squeeze().detach()
+            dec_in = topi.squeeze().detach()
 
-        return decoded_words, decoder_attentions[:di + 1]
+        return dec_outs, dec_attns[:di + 1]
 
 
-def evaluateRandomly(encoder, decoder, input_lang, output_lang, target_sos_index, n=10):
+def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
     for i in range(n):
-        input_seq, output_seq, seq_len = random.choice(pairs)
-        print('>', input_seq)
-        print('=', output_seq)
-        output_words, attentions = evaluate(
-            encoder, decoder, input_lang, output_lang, target_sos_index,
-            input_seq, seq_len)
-        output_sentence = ''.join(output_words)
-        print('<', output_sentence)
+        src_seq, tgt_seq, seq_len = random.choice(pairs)
+        print('>', src_seq)
+        print('=', tgt_seq)
+        prd_tokens, attns = evaluate(
+            src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len)
+        prd_seq = ''.join(prd_tokens)
+        print('<', prd_seq)
         print('')
 
 
@@ -251,7 +232,7 @@ if __name__ == "__main__":
 
     print('reading data from {0}'.format(os.path.abspath(data_file)))
     with open(data_file, 'rb') as inf:
-        input_lang, output_lang, pairs = pickle.load(inf)
+        src_lang, tgt_lang, pairs = pickle.load(inf)
 
     print('filter out seqs longer than {0}'.format(MAX_LENGTH))
     pairs = [_ for _ in pairs if _[-1] <= MAX_LENGTH]
@@ -259,15 +240,16 @@ if __name__ == "__main__":
     print('data loaded...')
     print('training on {0} seqs'.format(len(pairs)))
 
-    target_sos_index = output_lang.word2index['^']
+    sos_symbol = '^'            # symbol for start of a seq
+    tgt_sos_index = src_lang.word2index['^']
 
     hidden_size = 256
-    encoder = EncoderRNN(input_lang.n_words, hidden_size)
-    encoder = encoder.to(DEVICE)
+    enc = EncoderRNN(src_lang.n_words, hidden_size)
+    enc = enc.to(DEVICE)
 
-    attn_decoder = AttnDecoderRNN(
-        hidden_size, output_lang.n_words, dropout_p=0.1)
-    attn_decoder.to(DEVICE)
+    dec = AttnDecoderRNN(
+        hidden_size, tgt_lang.n_words, dropout_p=0.1)
+    dec.to(DEVICE)
 
-    trainIters(encoder, attn_decoder, input_lang, output_lang,
-               n_iters=75000, print_every=50)
+    trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index,
+               n_iters=75000, print_every=10)
