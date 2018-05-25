@@ -179,7 +179,7 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
                 idx,
                 idx / n_iters * 100,
                 print_loss_avg))
-            evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, 3)
+            evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, 1)
 
         if idx % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
