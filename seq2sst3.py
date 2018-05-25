@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch import optim
 import torch.nn.functional as F
 
-from utils import timeSince
+import utils as U
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -175,7 +175,7 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (
-                timeSince(start, idx / n_iters),
+                U.timeSince(start, idx / n_iters),
                 idx,
                 idx / n_iters * 100,
                 print_loss_avg))
@@ -224,7 +224,7 @@ def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
             src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len)
         prd_seq = ''.join(prd_tokens)
         print('<', prd_seq)
-        acc = (np.array(list(tgt_seq)) == np.array(prd_tokens)).sum() / seq_len
+        acc = U.calc_accuracy(tgt_seq, prd_seq)
         print('acc: {0}'.format(acc))
 
 
