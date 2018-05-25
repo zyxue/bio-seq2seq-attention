@@ -51,39 +51,42 @@ class EncoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1,
-                 max_length=MAX_LENGTH):
+    def __init__(self, hidden_size, output_size, dropout_p=0.1):
         super(AttnDecoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.dropout_p = dropout_p
-        self.max_length = max_length
 
-        self.embedding = nn.Embedding(self.output_size, self.hidden_size)
-        self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
-        self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        self.embedding = nn.Embedding(
+            num_embeddings=self.output_size,
+            embedding_dim=self.hidden_size
+        )
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.hidden_size, self.hidden_size)
-        self.out = nn.Linear(self.hidden_size, self.output_size)
+        self.attn = nn.Linear(self.hidden_size, self.hidden_size)
+        # hc: [hidden, context]
+        self.Whc = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        # s: softmax
+        self.Ws = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
         embedded = self.embedding(input).view(1, 1, -1)
         embedded = self.dropout(embedded)
 
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
-        attn_applied = torch.bmm(
-            attn_weights.unsqueeze(0),
-            encoder_outputs.unsqueeze(0)
-        )
+        gru_out, hidden = self.gru(embedded, hidden)
 
-        out = torch.cat((embedded[0], attn_applied[0]), 1)
-        out = self.attn_combine(out).unsqueeze(0)
+        # [0] remove the dimension of directions x layers for now
+        # attn_prod = torch.bmm(gru_out, self.attn(encoder_outputs).t().unsqueeze(0))[0]
+        attn_prod = torch.mm(self.attn(hidden)[0], encoder_outputs.t())
+        attn_weights = F.softmax(attn_prod, dim=1)
+        # aka. context, Luong et al., https://arxiv.org/pdf/1508.04025.pdf
+        attn_applied = torch.mm(attn_weights, encoder_outputs)
 
-        out = F.relu(out)
-        out, hidden = self.gru(out, hidden)
+        # hc: [hidden: context]
+        hc = torch.cat([hidden[0], attn_applied], dim=1)
+        out_hc = F.tanh(self.Whc(hc))
+        output = F.log_softmax(self.Ws(out_hc), dim=1)
 
-        output = F.log_softmax(self.out(out[0]), dim=1)
         return output, hidden, attn_weights
 
     def initHidden(self):
@@ -108,10 +111,11 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
     enc_optim.zero_grad()
     dec_optim.zero_grad()
 
-    # generate encoder outputs for src sequence. 
-    # outs indicates an array, out indicates a sinlge step output
+    # encoding source sequence
     enc_hid = enc.initHidden()
-    enc_outs = torch.zeros(MAX_LENGTH, enc.hidden_size, device=DEVICE)
+    directions = 2 if enc.bidirectional else 1
+    enc_outs = torch.zeros(
+        MAX_LENGTH, enc.hidden_size * directions, device=DEVICE)
     for ei in range(seq_len):
         enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
         enc_outs[ei] = enc_out[0, 0]
