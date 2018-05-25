@@ -229,8 +229,9 @@ def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
 
 
 if __name__ == "__main__":
-    data_dir = '../tf_nmt/nmt_aa_data/Heffernan_2017_SPIDER3/tr_va_te/'
-    data_file = os.path.join(data_dir, 'tr.seq2sst3.pkl')
+    # data_dir = '../tf_nmt/nmt_aa_data/Heffernan_2017_SPIDER3/tr_va_te/'
+    # data_file = os.path.join(data_dir, 'tr.seq2sst3.pkl')
+    data_file = sys.argv[1]
 
     print('reading data from {0}'.format(os.path.abspath(data_file)))
     with open(data_file, 'rb') as inf:
