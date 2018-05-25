@@ -21,12 +21,18 @@ MAX_LENGTH = 500
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size):
+    def __init__(self, input_size, hidden_size,
+                 num_layers=1, bidirectional=False, batch_size=1):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+        self.batch_size = batch_size
 
         self.embedding = nn.Embedding(input_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
+
+        self.gru = nn.GRU(
+            hidden_size, hidden_size, num_layers, bidirectional=bidirectional)
 
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
@@ -35,7 +41,13 @@ class EncoderRNN(nn.Module):
         return output, hidden
 
     def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=DEVICE)
+        directions = 2 if self.bidirectional else 1
+        return torch.zeros(
+            self.num_layers * directions,
+            self.batch_size,
+            self.hidden_size,
+            device=DEVICE
+        )
 
 
 class AttnDecoderRNN(nn.Module):
@@ -95,9 +107,6 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
           criterion, teacher_forcing_ratio=0.5):
     enc_optim.zero_grad()
     dec_optim.zero_grad()
-
-    # input_length = src_tensor.size(0)
-    # target_length = tgt_tensor.size(0)
 
     # generate encoder outputs for src sequence. 
     # outs indicates an array, out indicates a sinlge step output
@@ -247,7 +256,7 @@ if __name__ == "__main__":
     tgt_sos_index = src_lang.word2index['^']
 
     hidden_size = 256
-    enc = EncoderRNN(src_lang.n_words, hidden_size)
+    enc = EncoderRNN(src_lang.n_words, hidden_size, bidirectional=True)
     enc = enc.to(DEVICE)
 
     dec = AttnDecoderRNN(
