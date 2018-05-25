@@ -4,6 +4,8 @@ import random
 import pickle
 import time
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 from torch import optim
@@ -222,7 +224,8 @@ def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
             src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len)
         prd_seq = ''.join(prd_tokens)
         print('<', prd_seq)
-        print('')
+        acc = (np.array(list(tgt_seq)) == np.array(prd_tokens)).sum() / seq_len
+        print('acc: {0}'.format(acc))
 
 
 if __name__ == "__main__":
