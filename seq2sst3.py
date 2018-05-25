@@ -12,8 +12,7 @@ import torch.nn.functional as F
 from utils import timeSince
 
 
-# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device: {0}'.format(DEVICE))
 
 MAX_LENGTH = 500
