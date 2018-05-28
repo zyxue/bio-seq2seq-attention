@@ -17,11 +17,11 @@ import utils as U
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device: {0}'.format(DEVICE))
 
-MAX_LENGTH = 500
+MAX_LENGTH = 10
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, input_size, hidden_size,
+    def __init__(self, input_size, embedding_size, hidden_size,
                  num_layers=1, bidirectional=False, batch_size=1):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
@@ -29,15 +29,14 @@ class EncoderRNN(nn.Module):
         self.bidirectional = bidirectional
         self.batch_size = batch_size
 
-        self.embedding = nn.Embedding(input_size, hidden_size)
+        self.embedding = nn.Embedding(input_size, embedding_size)
 
-        self.gru = nn.GRU(
-            hidden_size, hidden_size, num_layers, bidirectional=bidirectional)
+        self.gru = nn.GRU(embedding_size, hidden_size, num_layers,
+                          bidirectional=bidirectional)
 
     def forward(self, input, hidden):
         embedded = self.embedding(input).view(1, 1, -1)
-        output = embedded
-        output, hidden = self.gru(output, hidden)
+        output, hidden = self.gru(embedded, hidden)
         return output, hidden
 
     def initHidden(self):
@@ -51,23 +50,24 @@ class EncoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1):
+    def __init__(self, embedding_size, hidden_size, output_size, dropout_p=0):
         super(AttnDecoderRNN, self).__init__()
+        self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.dropout_p = dropout_p
 
         self.embedding = nn.Embedding(
-            num_embeddings=self.output_size,
-            embedding_dim=self.hidden_size
+            num_embeddings=output_size,
+            embedding_dim=embedding_size
         )
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
-        self.attn = nn.Linear(self.hidden_size, self.hidden_size)
+        self.gru = nn.GRU(embedding_size, hidden_size)
+        self.attn = nn.Linear(hidden_size, hidden_size)
         # hc: [hidden, context]
-        self.Whc = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        self.Whc = nn.Linear(hidden_size * 2, hidden_size)
         # s: softmax
-        self.Ws = nn.Linear(self.hidden_size, self.output_size)
+        self.Ws = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, hidden, encoder_outputs):
         embedded = self.embedding(input).view(1, 1, -1)
@@ -129,7 +129,6 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
             loss += criterion(dec_out, tgt_tensor[di])
             dec_in = tgt_tensor[di]
-
     else:
         for di in range(seq_len):
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
@@ -149,7 +148,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
 
 
 def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
-               print_every=1000, plot_every=100, learning_rate=0.01):
+               print_every=1000, plot_every=100, learning_rate=0.001):
     print('training for {0} steps'.format(n_iters))
     print('collect loss for plotting per {0} steps'.format(plot_every))
 
@@ -158,8 +157,10 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
     print_loss_total = 0
     plot_loss_total = 0
 
-    enc_optim = optim.SGD(enc.parameters(), lr=learning_rate)
-    dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
+    # enc_optim = optim.SGD(enc.parameters(), lr=learning_rate)
+    # dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
+    enc_optim = optim.Adam(enc.parameters(), lr=learning_rate)
+    dec_optim = optim.Adam(dec.parameters(), lr=learning_rate)
 
     tr_pair_tensors = []
     for i in range(n_iters):
@@ -253,12 +254,14 @@ if __name__ == "__main__":
     sos_symbol = '^'            # symbol for start of a seq
     tgt_sos_index = src_lang.word2index['^']
 
-    hidden_size = 256
-    enc = EncoderRNN(src_lang.n_words, hidden_size, bidirectional=False)
+    embedding_size = 20
+    hidden_size = 512
+    enc = EncoderRNN(
+        src_lang.n_words, embedding_size, hidden_size, bidirectional=False)
     enc = enc.to(DEVICE)
 
     dec = AttnDecoderRNN(
-        hidden_size, tgt_lang.n_words, dropout_p=0.1)
+        embedding_size, hidden_size, tgt_lang.n_words, dropout_p=0.1)
     dec.to(DEVICE)
 
     trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index,
