@@ -50,7 +50,7 @@ class EncoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, embedding_size, hidden_size, output_size, dropout_p=0):
+    def __init__(self, embedding_size, hidden_size, output_size, dropout_p=0.1):
         super(AttnDecoderRNN, self).__init__()
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
@@ -183,7 +183,7 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
             print_loss_avg = print_loss_total / print_every
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (
-                U.timeSince(start, idx / n_iters),
+                U.time_since(start, idx / n_iters),
                 idx,
                 idx / n_iters * 100,
                 print_loss_avg))
@@ -237,9 +237,9 @@ def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
 
 
 if __name__ == "__main__":
-    # data_dir = '../tf_nmt/nmt_aa_data/Heffernan_2017_SPIDER3/tr_va_te/'
-    # data_file = os.path.join(data_dir, 'tr.seq2sst3.pkl')
-    data_file = sys.argv[1]
+    args = U.parse_args()
+
+    data_file = args.input
 
     print('reading data from {0}'.format(os.path.abspath(data_file)))
     with open(data_file, 'rb') as inf:
@@ -254,15 +254,21 @@ if __name__ == "__main__":
     sos_symbol = '^'            # symbol for start of a seq
     tgt_sos_index = src_lang.word2index['^']
 
-    embedding_size = 20
-    hidden_size = 512
     enc = EncoderRNN(
-        src_lang.n_words, embedding_size, hidden_size, bidirectional=False)
+        src_lang.n_words,
+        args.embedding_size,
+        args.hidden_size,
+        bidirectional=False
+    )
     enc = enc.to(DEVICE)
 
     dec = AttnDecoderRNN(
-        embedding_size, hidden_size, tgt_lang.n_words, dropout_p=0.1)
+        args.embedding_size,
+        args.hidden_size,
+        tgt_lang.n_words,
+        dropout_p=0.1
+    )
     dec.to(DEVICE)
 
     trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index,
-               n_iters=75000, print_every=100)
+               n_iters=args.num_iters, print_every=args.print_every)
