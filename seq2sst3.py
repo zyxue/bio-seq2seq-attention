@@ -75,22 +75,16 @@ class AttnDecoderRNN(nn.Module):
 
         gru_out, hidden = self.gru(embedded, hidden)
 
-        # [0] remove the dimension of directions x layers for now
-        # attn_prod = torch.bmm(gru_out, self.attn(encoder_outputs).t().unsqueeze(0))[0]
         attn_prod = torch.mm(self.attn(hidden)[0], encoder_outputs.t())
         attn_weights = F.softmax(attn_prod, dim=1)
-        # aka. context, Luong et al., https://arxiv.org/pdf/1508.04025.pdf
-        attn_applied = torch.mm(attn_weights, encoder_outputs)
+        context = torch.mm(attn_weights, encoder_outputs)
 
         # hc: [hidden: context]
-        hc = torch.cat([hidden[0], attn_applied], dim=1)
+        hc = torch.cat([hidden[0], context], dim=1)
         out_hc = F.tanh(self.Whc(hc))
         output = F.log_softmax(self.Ws(out_hc), dim=1)
 
         return output, hidden, attn_weights
-
-    def initHidden(self):
-        return torch.zeros(1, 1, self.hidden_size, device=DEVICE)
 
 
 def tensor_from_sentence(lang, sentence):
@@ -260,7 +254,7 @@ if __name__ == "__main__":
     tgt_sos_index = src_lang.word2index['^']
 
     hidden_size = 256
-    enc = EncoderRNN(src_lang.n_words, hidden_size, bidirectional=True)
+    enc = EncoderRNN(src_lang.n_words, hidden_size, bidirectional=False)
     enc = enc.to(DEVICE)
 
     dec = AttnDecoderRNN(
@@ -268,4 +262,4 @@ if __name__ == "__main__":
     dec.to(DEVICE)
 
     trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index,
-               n_iters=75000, print_every=10)
+               n_iters=75000, print_every=100)
