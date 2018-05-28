@@ -37,7 +37,7 @@ class EncoderRNN(nn.Module):
         output, hidden = self.gru(embedded, hidden)
         return output, hidden
 
-    def initHidden(self):
+    def init_hidden(self):
         directions = 2 if self.bidirectional else 1
         return torch.zeros(
             self.num_layers * directions,
@@ -104,7 +104,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
     dec_optim.zero_grad()
 
     # encoding source sequence
-    enc_hid = enc.initHidden()
+    enc_hid = enc.init_hidden()
     directions = 2 if enc.bidirectional else 1
     enc_outs = torch.zeros(seq_len, enc.hidden_size * directions, device=DEVICE)
     for ei in range(seq_len):
@@ -197,7 +197,7 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
     with torch.no_grad():
         src_tensor = tensor_from_sentence(src_lang, src_seq)
 
-        enc_hid = enc.initHidden()
+        enc_hid = enc.init_hidden()
         enc_outs = torch.zeros(seq_len, enc.hidden_size, device=DEVICE)
 
         for ei in range(seq_len):
