@@ -17,8 +17,6 @@ import utils as U
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print('device: {0}'.format(DEVICE))
 
-MAX_LENGTH = 10
-
 
 class EncoderRNN(nn.Module):
     def __init__(self, input_size, embedding_size, hidden_size,
@@ -108,8 +106,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
     # encoding source sequence
     enc_hid = enc.initHidden()
     directions = 2 if enc.bidirectional else 1
-    enc_outs = torch.zeros(
-        MAX_LENGTH, enc.hidden_size * directions, device=DEVICE)
+    enc_outs = torch.zeros(seq_len, enc.hidden_size * directions, device=DEVICE)
     for ei in range(seq_len):
         enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
         enc_outs[ei] = enc_out[0, 0]
@@ -196,13 +193,12 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
     # showPlot(plot_losses)
 
 
-def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index,
-             src_seq, seq_len, max_length=MAX_LENGTH):
+def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
     with torch.no_grad():
         src_tensor = tensor_from_sentence(src_lang, src_seq)
 
         enc_hid = enc.initHidden()
-        enc_outs = torch.zeros(max_length, enc.hidden_size, device=DEVICE)
+        enc_outs = torch.zeros(seq_len, enc.hidden_size, device=DEVICE)
 
         for ei in range(seq_len):
             enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
@@ -211,7 +207,7 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index,
         dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
         dec_hid = enc_hid
         dec_outs = []
-        dec_attns = torch.zeros(max_length, max_length)
+        dec_attns = torch.zeros(seq_len, seq_len)
         for di in range(seq_len):
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
             dec_attns[di] = dec_attn.data
@@ -245,8 +241,8 @@ if __name__ == "__main__":
     with open(data_file, 'rb') as inf:
         src_lang, tgt_lang, pairs = pickle.load(inf)
 
-    print('filter out seqs longer than {0}'.format(MAX_LENGTH))
-    pairs = [_ for _ in pairs if _[-1] <= MAX_LENGTH]
+    # print('filter out seqs longer than {0}'.format(MAX_LENGTH))
+    # pairs = [_ for _ in pairs if _[-1] <= MAX_LENGTH]
 
     print('data loaded...')
     print('training on {0} seqs'.format(len(pairs)))
