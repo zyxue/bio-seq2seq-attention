@@ -32,8 +32,9 @@ class EncoderRNN(nn.Module):
         self.gru = nn.GRU(embedding_size, hidden_size, num_layers,
                           bidirectional=bidirectional)
 
-    def forward(self, input, hidden):
-        embedded = self.embedding(input).view(1, 1, -1)
+    def forward(self, inputs, hidden):
+        seq_len = inputs.shape[0]
+        embedded = self.embedding(inputs).view(seq_len, 1, -1)
         output, hidden = self.gru(embedded, hidden)
         return output, hidden
 
@@ -71,11 +72,20 @@ class AttnDecoderRNN(nn.Module):
         embedded = self.embedding(input).view(1, 1, -1)
         embedded = self.dropout(embedded)
 
+        seq_len = encoder_outputs.shape[0]
+        layer_x_direc_size, batch_size, hidden_size = hidden.shape
+
         gru_out, hidden = self.gru(embedded, hidden)
 
-        attn_prod = torch.mm(self.attn(hidden)[0], encoder_outputs.t())
-        attn_weights = F.softmax(attn_prod, dim=1)
-        context = torch.mm(attn_weights, encoder_outputs)
+        attn_prod = torch.bmm(
+            self.attn(hidden).expand(seq_len, batch_size, hidden_size),
+            encoder_outputs.view(seq_len, hidden_size, batch_size)
+        )
+        attn_weights = F.softmax(attn_prod, dim=0)
+        context = torch.mm(
+            attn_weights.squeeze(1).view(1, seq_len),
+            encoder_outputs.squeeze()
+        )
 
         # hc: [hidden: context]
         hc = torch.cat([hidden[0], context], dim=1)
@@ -106,10 +116,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_len,
     # encoding source sequence
     enc_hid = enc.init_hidden()
     directions = 2 if enc.bidirectional else 1
-    enc_outs = torch.zeros(seq_len, enc.hidden_size * directions, device=DEVICE)
-    for ei in range(seq_len):
-        enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
-        enc_outs[ei] = enc_out[0, 0]
+    enc_outs, enc_hid = enc(src_tensor, enc_hid)
 
     # take the hidden state from the last step in the encoder, continue in the
     # decoder
@@ -198,11 +205,7 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
         src_tensor = tensor_from_sentence(src_lang, src_seq)
 
         enc_hid = enc.init_hidden()
-        enc_outs = torch.zeros(seq_len, enc.hidden_size, device=DEVICE)
-
-        for ei in range(seq_len):
-            enc_out, enc_hid = enc(src_tensor[ei], enc_hid)
-            enc_outs[ei] += enc_out[0, 0]
+        enc_outs, enc_hid = enc(src_tensor, enc_hid)
 
         dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
         dec_hid = enc_hid
@@ -210,7 +213,7 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
         dec_attns = torch.zeros(seq_len, seq_len)
         for di in range(seq_len):
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
-            dec_attns[di] = dec_attn.data
+            dec_attns[di] = dec_attn.view(-1)
             topv, topi = dec_out.data.topk(1)
             dec_outs.append(tgt_lang.index2word[topi.item()])
 
