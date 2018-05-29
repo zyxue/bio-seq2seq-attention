@@ -19,7 +19,7 @@ print('device: {0}'.format(DEVICE))
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, vocab_size, embedding_size, hidden_size, num_layers=1,
+    def __init__(self, vocab_size, embedding_size, hidden_size, num_layers,
                  bidirectional=False):
         super(EncoderRNN, self).__init__()
         self.hidden_size = hidden_size
@@ -49,10 +49,12 @@ class EncoderRNN(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, embedding_size, hidden_size, output_size, dropout_p=0.1):
+    def __init__(self, embedding_size, hidden_size, num_layers, output_size,
+                 dropout_p=0.1):
         super(AttnDecoderRNN, self).__init__()
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
+        self.num_layers = num_layers
         self.output_size = output_size
         self.dropout_p = dropout_p
 
@@ -61,7 +63,7 @@ class AttnDecoderRNN(nn.Module):
             embedding_dim=embedding_size
         )
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(embedding_size, hidden_size)
+        self.gru = nn.GRU(embedding_size, hidden_size, num_layers)
         self.attn = nn.Linear(hidden_size, hidden_size)
         # hc: [hidden, context]
         self.Whc = nn.Linear(hidden_size * 2, hidden_size)
@@ -79,13 +81,8 @@ class AttnDecoderRNN(nn.Module):
 
         gru_out, hidden = self.gru(embedded, hidden)
 
-        # attn_prod = torch.bmm(
-        #     self.attn(hidden).expand(seq_len, batch_size, hidden_size),
-        #     encoder_outputs.view(seq_len, hidden_size, batch_size)
-        # )
-
         attn_prod = torch.bmm(
-            self.attn(hidden).view(batch_size, 1, hidden_size),
+            self.attn(gru_out).view(batch_size, 1, hidden_size),
             encoder_outputs.view(batch_size, hidden_size, seq_len)
         ).view(batch_size, 1, seq_len)
 
@@ -267,7 +264,9 @@ if __name__ == "__main__":
     for i in [
             'embedding_size',
             'hidden_size',
-            'batch_size'
+            'batch_size',
+            'num_layers',
+            'bidirectional',
     ]:
         print('{0}:\t{1}'.format(i, getattr(args, i)))
 
@@ -288,14 +287,15 @@ if __name__ == "__main__":
         src_lang.n_words,
         args.embedding_size,
         args.hidden_size,
-        num_layers=1,
-        bidirectional=False,
+        args.num_layers,
+        args.bidirectional,
     )
     enc = enc.to(DEVICE)
 
     dec = AttnDecoderRNN(
         args.embedding_size,
         args.hidden_size,
+        args.num_layers,
         tgt_lang.n_words,
         dropout_p=0.1
     )
