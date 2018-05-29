@@ -71,6 +71,19 @@ class AttnDecoderRNN(nn.Module):
         self.Ws = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, hidden, encoder_outputs):
+        """Shapes:
+
+        Sd: decoder sequence length, it should be one in the decoder since the
+        output sequence is decoded one step at a time
+        S: sequence length
+        B: batch size
+        H: hidden size
+
+        input: B x 1
+        hidden: 1 x B x H
+        encoder_outputs: S x B x H
+        """
+
         batch_size = input.shape[0]
         # 1 means one step: decoder always decodes one step at a time
         embedded = self.embedding(input).view(1, batch_size, -1)
@@ -81,19 +94,17 @@ class AttnDecoderRNN(nn.Module):
 
         gru_out, hidden = self.gru(embedded, hidden)
 
-        attn_prod = torch.bmm(
-            self.attn(gru_out).view(batch_size, 1, hidden_size),
-            encoder_outputs.view(batch_size, hidden_size, seq_len)
-        ).view(batch_size, 1, seq_len)
+        # S x B
+        attn_prod = torch.mul(gru_out, encoder_outputs).sum(dim=2)
 
-        attn_weights = F.softmax(attn_prod, dim=2)
-        context = torch.bmm(
-            attn_weights,
-            encoder_outputs.view(batch_size, seq_len, -1)
-        )
+        attn_weights = F.softmax(attn_prod, dim=0)
+        # B x H: weighted average
+        context = torch.mul(
+            attn_weights.view(seq_len, batch_size, 1),
+            encoder_outputs
+        ).sum(dim=0)
 
-        # hc: [hidden: context]
-        hc = torch.cat([hidden[0], context[:, 0, :]], dim=1)
+        hc = torch.cat([hidden[0], context], dim=1)
         out_hc = F.tanh(self.Whc(hc))
         output = F.log_softmax(self.Ws(out_hc), dim=1)
 
