@@ -100,6 +100,7 @@ class AttnDecoderRNN(nn.Module):
         attn_weights = F.softmax(attn_prod, dim=0)
         # B x H: weighted average
         context = torch.mul(
+            # .view: make attn_weights 3D tensor to make it multiplicable
             attn_weights.view(seq_len, batch_size, 1),
             encoder_outputs
         ).sum(dim=0)
