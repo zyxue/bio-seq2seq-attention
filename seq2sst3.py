@@ -69,8 +69,9 @@ class AttnDecoderRNN(nn.Module):
         self.Ws = nn.Linear(hidden_size, output_size)
 
     def forward(self, input, hidden, encoder_outputs):
-        import pdb; pdb.set_trace()
-        embedded = self.embedding(input).view(1, 1, -1)
+        batch_size = input.shape[0]
+        # 1 means one step: decoder always decodes one step at a time
+        embedded = self.embedding(input).view(1, batch_size, -1)
         embedded = self.dropout(embedded)
 
         seq_len = encoder_outputs.shape[0]
@@ -78,18 +79,24 @@ class AttnDecoderRNN(nn.Module):
 
         gru_out, hidden = self.gru(embedded, hidden)
 
+        # attn_prod = torch.bmm(
+        #     self.attn(hidden).expand(seq_len, batch_size, hidden_size),
+        #     encoder_outputs.view(seq_len, hidden_size, batch_size)
+        # )
+
         attn_prod = torch.bmm(
-            self.attn(hidden).expand(seq_len, batch_size, hidden_size),
-            encoder_outputs.view(seq_len, hidden_size, batch_size)
-        )
-        attn_weights = F.softmax(attn_prod, dim=0)
-        context = torch.mm(
-            attn_weights.squeeze(1).view(1, seq_len),
-            encoder_outputs.squeeze()
+            self.attn(hidden).view(batch_size, 1, hidden_size),
+            encoder_outputs.view(batch_size, hidden_size, seq_len)
+        ).view(batch_size, 1, seq_len)
+
+        attn_weights = F.softmax(attn_prod, dim=2)
+        context = torch.bmm(
+            attn_weights,
+            encoder_outputs.view(batch_size, seq_len, -1)
         )
 
         # hc: [hidden: context]
-        hc = torch.cat([hidden[0], context], dim=1)
+        hc = torch.cat([hidden[0], context[:, 0, :]], dim=1)
         out_hc = F.tanh(self.Whc(hc))
         output = F.log_softmax(self.Ws(out_hc), dim=1)
 
@@ -123,7 +130,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     # decoder
     dec_hid = enc_hid
     # init the first input for the decoder
-    dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
+    dec_in = torch.tensor([[tgt_sos_index] * batch_size], device=DEVICE).view(-1, 1)
 
     # decide to use teacher forcing or not
     use_tf = True if random.random() < teacher_forcing_ratio else False
@@ -133,7 +140,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     if use_tf:
         for di in range(seq_len):
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
-            loss += criterion(dec_out, tgt_tensor[di])
+            loss += criterion(dec_out, tgt_tensor[di].view(-1))
             dec_in = tgt_tensor[di]
     else:
         for di in range(seq_len):
@@ -142,19 +149,20 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
             # Returns a new Tensor, detached from the current graph. The result
             # will never require gradient.
             # https://pytorch.org/docs/stable/autograd.html#torch.Tensor.detach
-            dec_in = topi.squeeze().detach()
-            loss += criterion(dec_out, tgt_tensor[di])
+            dec_in = topi.detach()
+            loss += criterion(dec_out, tgt_tensor[di].view(-1))
 
     loss.backward()
 
     enc_optim.step()
     dec_optim.step()
 
-    return loss.item() / seq_len
+    # TODO: better mask output padded seqs when calculating loss
+    return loss.item() / seq_len.item()
 
 
 def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
-               batch_size=2, print_every=1000, plot_every=100, learning_rate=0.001):
+               batch_size=1, print_every=1000, plot_every=100, learning_rate=0.001):
     print('training for {0} steps'.format(n_iters))
     print('collect loss for plotting per {0} steps'.format(plot_every))
 
@@ -217,12 +225,13 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
 
 def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
     with torch.no_grad():
-        src_tensor = tensor_from_sentence(src_lang, src_seq)
+        # shape: S X B X 1
+        src_tensor = tensor_from_sentence(src_lang, src_seq).view(-1, 1, 1)
 
-        enc_hid = enc.init_hidden()
+        enc_hid = enc.init_hidden(batch_size=1)
         enc_outs, enc_hid = enc(src_tensor, enc_hid)
 
-        dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE)
+        dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE).view(-1, 1)
         dec_hid = enc_hid
         dec_outs = []
         dec_attns = torch.zeros(seq_len, seq_len)
@@ -232,7 +241,7 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
             topv, topi = dec_out.data.topk(1)
             dec_outs.append(tgt_lang.index2word[topi.item()])
 
-            dec_in = topi.squeeze().detach()
+            dec_in = topi.detach()
 
         return dec_outs, dec_attns[:di + 1]
 
@@ -254,6 +263,13 @@ if __name__ == "__main__":
     args = U.parse_args()
 
     data_file = args.input
+
+    for i in [
+            'embedding_size',
+            'hidden_size',
+            'batch_size'
+    ]:
+        print('{0}:\t{1}'.format(i, getattr(args, i)))
 
     print('reading data from {0}'.format(os.path.abspath(data_file)))
     with open(data_file, 'rb') as inf:
