@@ -5,6 +5,8 @@ import pickle
 import time
 
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 
 import torch
 import torch.nn as nn
@@ -230,7 +232,8 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
                 idx,
                 idx / n_iters * 100,
                 print_loss_avg))
-            evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, 1)
+            evaluate_randomly(
+                src_lang, tgt_lang, enc, dec, tgt_sos_index, 1, idx)
 
         if idx % plot_every == 0:
             plot_loss_avg = plot_loss_total / plot_every
@@ -270,8 +273,9 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
         return dec_outs, dec_attns[:di + 1]
 
 
-def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
-    for i in range(n):
+def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index,
+                      num, iter_idx):
+    for i in range(num):
         src_seq, tgt_seq, seq_len = random.choice(pairs)
         print('>', src_seq)
         print('=', tgt_seq)
@@ -281,6 +285,28 @@ def evaluate_randomly(src_lang, tgt_lang, enc, dec, tgt_sos_index, n=10):
         print('<', prd_seq)
         acc = U.calc_accuracy(tgt_seq, prd_seq)
         print('acc: {0}'.format(acc))
+        plot_attn(attns, src_seq, prd_seq, acc, iter_idx)
+
+
+def plot_attn(attns, src_seq, prd_seq, acc, time_step):
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111)
+    matshow = ax.matshow(attns.numpy(), vmin=0, vmax=1)
+    plt.colorbar(matshow, fraction=0.046, pad=0.04)
+
+    ax.set_xticklabels([''] + list(src_seq), rotation=90)
+    ax.set_yticklabels([''] + list(prd_seq))
+
+    ax.set_xlabel('src_seq')
+    ax.set_ylabel('prd_seq')
+
+    # Show label at every tick
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    title = 'Step: {0:d}; Accuracy: {1:.3f}'.format(time_step, acc)
+    ax.set_title(title, loc='left')
+    plt.savefig('./figs/{0}.png'.format(time_step))
+    plt.close()
 
 
 if __name__ == "__main__":
