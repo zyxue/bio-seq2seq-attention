@@ -132,8 +132,15 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
 
     # encoding source sequence
     enc_hid = enc.init_hidden(batch_size)
-    directions = 2 if enc.bidirectional else 1
     enc_outs, enc_hid = enc(src_tensor, enc_hid)
+
+    if enc.bidirectional:
+        # as the enc_outs has a 2x factor for hidden size, so reshape hidden to
+        # match that
+        enc_hid = torch.cat([
+            enc_hid[:enc.num_layers, :, :],
+            enc_hid[enc.num_layers:, :, :]
+        ], dim=2)
 
     # take the hidden state from the last step in the encoder, continue in the
     # decoder
@@ -240,6 +247,14 @@ def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
         enc_hid = enc.init_hidden(batch_size=1)
         enc_outs, enc_hid = enc(src_tensor, enc_hid)
 
+        if enc.bidirectional:
+            # as the enc_outs has a 2x factor for hidden size, so reshape hidden to
+            # match that
+            enc_hid = torch.cat([
+                enc_hid[:enc.num_layers, :, :],
+                enc_hid[enc.num_layers:, :, :]
+            ], dim=2)
+
         dec_in = torch.tensor([[tgt_sos_index]], device=DEVICE).view(-1, 1)
         dec_hid = enc_hid
         dec_outs = []
@@ -304,9 +319,11 @@ if __name__ == "__main__":
     )
     enc = enc.to(DEVICE)
 
+    num_directions = 2 if args.bidirectional else 1
     dec = AttnDecoderRNN(
         args.embedding_size,
-        args.hidden_size,
+        # adjust decoder architecture accordingly based on num_directions
+        args.hidden_size * num_directions,
         args.num_layers,
         tgt_lang.n_words,
         dropout_p=0.1
