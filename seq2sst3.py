@@ -95,7 +95,7 @@ class AttnDecoderRNN(nn.Module):
         gru_out, hidden = self.gru(embedded, hidden)
 
         # S x B
-        attn_prod = torch.mul(gru_out, encoder_outputs).sum(dim=2)
+        attn_prod = torch.mul(self.attn(gru_out), encoder_outputs).sum(dim=2)
 
         attn_weights = F.softmax(attn_prod, dim=0)
         # B x H: weighted average
