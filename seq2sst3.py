@@ -245,6 +245,7 @@ def trainIters(
         if plot_every > 0 and idx % plot_every == 0:
             evaluate_randomly(
                 src_lang, tgt_lang, enc, dec, tgt_sos_index, 1, idx)
+    return print_losses
 
 
 def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
