@@ -6,17 +6,21 @@ import numpy as np
 
 
 class Lang(object):
-    def __init__(self, name, vocab_file):
+    def __init__(self, name, vocab=None):
         self.name = name
-        self.vocab_file = vocab_file
+        self.vocab = vocab      # should be a list
 
         self.word2index = {}
-        with open(vocab_file) as inf:
-            for k, i in enumerate(inf):
-                i = i.strip()
-                if not i:       # empty line
-                    continue
-                self.word2index[i] = k
+
+        # with open(vocab_file) as inf:
+        #     for k, i in enumerate(inf):
+        #         i = i.strip()
+        #         if not i:       # empty line
+        #             continue
+        #         self.word2index[i] = k
+
+        for k, i in enumerate(vocab):
+            self.word2index[i] = k
 
         self.index2word = {j: i for (i, j) in self.word2index.items()}
 
