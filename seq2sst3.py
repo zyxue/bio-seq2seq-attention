@@ -303,6 +303,10 @@ def plot_attn(attns, src_seq, prd_seq, acc, time_step):
     # Show label at every tick
     ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.xaxis.set_tick_params(labelsize=500 // len(src_seq),
+                             labeltop=False, labelbottom=True)
+    ax.yaxis.set_tick_params(labelsize=500 // len(src_seq))
+
     title = 'Step: {0:d}; Accuracy: {1:.3f}'.format(time_step, acc)
     ax.set_title(title, loc='left')
     plt.savefig('./figs/{0}.png'.format(time_step))
