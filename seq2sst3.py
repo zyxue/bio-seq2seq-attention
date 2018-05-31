@@ -338,7 +338,7 @@ if __name__ == "__main__":
     print('training on {0} seqs'.format(len(pairs)))
 
     sos_symbol = '^'            # symbol for start of a seq
-    tgt_sos_index = src_lang.word2index['^']
+    tgt_sos_index = tgt_lang.word2index['^']
 
     enc = EncoderRNN(
         src_lang.n_words,
