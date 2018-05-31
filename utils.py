@@ -62,6 +62,10 @@ def parse_args():
 
     parser.add_argument('-t', '--num-iters', type=int, default=5000)
     parser.add_argument('-p', '--print-every', type=int, default=100)
+    parser.add_argument(
+        '--plot-every', type=int, default=0,
+        help='if 0, no plotting willl be done'
+    )
 
     args = parser.parse_args()
     return args

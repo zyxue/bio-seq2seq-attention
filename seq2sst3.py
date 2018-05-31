@@ -179,15 +179,24 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     return loss.item() / seq_len.item()
 
 
-def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
-               batch_size=1, print_every=1000, plot_every=100, learning_rate=0.001):
-    print('training for {0} steps'.format(n_iters))
-    print('collect loss for plotting per {0} steps'.format(plot_every))
+def trainIters(
+        src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
+        batch_size=1,
+        print_every=1000,
+        plot_every=100,
+        learning_rate=0.001
+):
+    print('Training for {0} steps'.format(n_iters))
+    print('Collect loss for plotting every {0} steps'.format(print_every))
+
+    if plot_every > 0:
+        print('Plot attention map every {0} steps'.format(plot_every))
+    else:
+        print('No attention map will be plotted during training')
 
     start = time.time()
-    plot_losses = []
     print_loss_total = 0
-    plot_loss_total = 0
+    print_losses = []
 
     # enc_optim = optim.SGD(enc.parameters(), lr=learning_rate)
     # dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
@@ -222,24 +231,20 @@ def trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
             batch_size=batch_size
         )
         print_loss_total += loss
-        plot_loss_total += loss
 
         if idx % print_every == 0:
             print_loss_avg = print_loss_total / print_every
+            print_losses.append(print_loss_avg)
             print_loss_total = 0
             print('%s (%d %d%%) %.4f' % (
                 U.time_since(start, idx / n_iters),
                 idx,
                 idx / n_iters * 100,
                 print_loss_avg))
+
+        if plot_every > 0 and idx % plot_every == 0:
             evaluate_randomly(
                 src_lang, tgt_lang, enc, dec, tgt_sos_index, 1, idx)
-
-        if idx % plot_every == 0:
-            plot_loss_avg = plot_loss_total / plot_every
-            plot_losses.append(plot_loss_avg)
-            plot_loss_total = 0
-    # showPlot(plot_losses)
 
 
 def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
@@ -309,7 +314,10 @@ def plot_attn(attns, src_seq, prd_seq, acc, time_step):
 
     title = 'Step: {0:d}; Accuracy: {1:.3f}'.format(time_step, acc)
     ax.set_title(title, loc='left')
-    plt.savefig('./figs/{0}.png'.format(time_step))
+    outdir = './figs'
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
+    plt.savefig(os.path.join(outdir, '{0}.png'.format(time_step)))
     plt.close()
 
 
@@ -360,7 +368,9 @@ if __name__ == "__main__":
     )
     dec.to(DEVICE)
 
-    trainIters(src_lang, tgt_lang, enc, dec, tgt_sos_index,
-               n_iters=args.num_iters, print_every=args.print_every,
-               batch_size=args.batch_size
+    hist = trainIters(
+        src_lang, tgt_lang, enc, dec, tgt_sos_index, args.num_iters,
+        batch_size=args.batch_size,
+        print_every=args.print_every,
+        plot_every=args.plot_every,
     )
