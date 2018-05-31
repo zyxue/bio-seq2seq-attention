@@ -179,7 +179,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     return loss.item() / seq_len.item()
 
 
-def trainIters(
+def train_iters(
         src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
         batch_size=1,
         print_every=1000,
@@ -369,7 +369,7 @@ if __name__ == "__main__":
     )
     dec.to(DEVICE)
 
-    hist = trainIters(
+    hist = train_iters(
         src_lang, tgt_lang, enc, dec, tgt_sos_index, args.num_iters,
         batch_size=args.batch_size,
         print_every=args.print_every,
