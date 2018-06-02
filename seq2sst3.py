@@ -99,7 +99,10 @@ class AttnDecoderRNN(nn.Module):
         # S x B
         attn_prod = torch.mul(self.attn(gru_out), encoder_outputs).sum(dim=2)
 
-        attn_weights = F.softmax(attn_prod, dim=0)
+        # attn_weights = F.softmax(attn_prod, dim=0)
+        # attention smoothing. https://arxiv.org/pdf/1707.07167.pdf
+        attn_weights = F.sigmoid(attn_prod)
+
         # B x H: weighted average
         context = torch.mul(
             # .view: make attn_weights 3D tensor to make it multiplicable
