@@ -318,7 +318,7 @@ def plot_attn(attns, src_seq, prd_seq, acc, time_step):
 
     title = 'Step: {0:d}; Accuracy: {1:.3f}'.format(time_step, acc)
     ax.set_title(title, loc='left')
-    outdir = './figs'
+    outdir = args.outdir
     if not os.path.exists(outdir):
         os.mkdir(outdir)
     plt.savefig(os.path.join(outdir, '{0}.png'.format(time_step)))
