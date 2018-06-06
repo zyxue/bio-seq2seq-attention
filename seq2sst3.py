@@ -373,8 +373,14 @@ if __name__ == "__main__":
     dec.to(DEVICE)
 
     hist = train_iters(
-        src_lang, tgt_lang, enc, dec, tgt_sos_index, args.num_iters,
-        batch_size=args.batch_size,
-        print_every=args.print_every,
-        plot_every=args.plot_every,
+        src_lang,
+        tgt_lang,
+        enc,
+        dec,
+        tgt_sos_index,
+        args.num_iters,
+        args.batch_size,
+        args.print_every,
+        args.plot_every,
+        args.learning_rate
     )
