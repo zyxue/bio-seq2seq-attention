@@ -64,21 +64,19 @@ def main():
     dec.to(device)
     logging.info(f'decoder => \n{dec}')
 
-    # beg_token = '^'
-    # tgt_sos_index = lang1.token2index[lang1.beg_token]
-
-    # hist = train.train_iters(
-    #     src_lang,
-    #     tgt_lang,
-    #     enc,
-    #     dec,
-    #     tgt_sos_index,
-    #     args.num_iters,
-    #     args.batch_size,
-    #     args.print_every,
-    #     args.plot_every,
-    #     args.learning_rate
-    # )
+    logging.info('start training ...')
+    hist = train.train_iters(
+        lang0,
+        lang1,
+        enc,
+        dec,
+        lang1.token2index[lang1.beg_token],
+        args.num_iters,
+        args.batch_size,
+        args.print_every,
+        args.plot_every,
+        args.learning_rate
+    )
 
 
 if __name__ == "__main__":
