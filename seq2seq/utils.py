@@ -1,7 +1,7 @@
 import time
 import math
-import argparse
 
+import torch
 import numpy as np
 
 
@@ -54,25 +54,22 @@ def calc_accuracy(seq1, seq2):
             np.array(list(seq2))[:min_len]).sum() / max_len
 
 
-def parse_args():
-    parser = argparse.ArgumentParser()
+def tensor_from_sentence(lang, sentence, device):
+    indexes = [lang.word2index[i] for i in sentence]
+    return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
 
-    parser.add_argument('-i', '--input', type=str)
-    parser.add_argument('-e', '--embedding-size', type=int)
-    parser.add_argument('-d', '--hidden-size', type=int)
-    parser.add_argument('-b', '--batch-size', type=int, default=1)
-    parser.add_argument('-l', '--num-layers', type=int, default=1)
-    parser.add_argument('-r', '--bidirectional', action='store_true')
-    parser.add_argument('--learning-rate', type=float, default=0.01)
-    parser.add_argument('-o', '--outdir', type=str)
 
-    parser.add_argument('-t', '--num-iters', type=int, default=5000)
-    parser.add_argument('-p', '--print-every', type=int, default=100)
+def tensors_from_pair(src_lang, tgt_lang, pair):
+    src_tensor = tensor_from_sentence(src_lang, pair[0])
+    tgt_tensor = tensor_from_sentence(tgt_lang, pair[1])
+    seq_len = pair[2]
+    return (src_tensor, tgt_tensor, seq_len)
 
-    parser.add_argument(
-        '--plot-every', type=int, default=0,
-        help='if 0, no plotting willl be done'
-    )
 
-    args = parser.parse_args()
-    return args
+def get_device(s=None):
+    if s is None:
+        if torch.cuda.is_available():
+            s = 'cuda:0'
+        else:
+            s = 'cpu'
+    return torch.device(s)
