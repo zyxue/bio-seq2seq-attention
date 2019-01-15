@@ -1,51 +1,56 @@
 import os
 import pickle
+import logging
 
-from bioseq2seq import encoder
-from bioseq2seq import decoder
-from bioseq2seq import train
-from bioseq2seq import utils as U
-
-
-DEVICE = U.get_device()
-print('device: {0}'.format(DEVICE))
+from seq2seq import encoder
+from seq2seq import decoder
+from seq2seq import train
+from seq2seq.args import parse_args
+from seq2seq import utils as U
 
 
-if __name__ == "__main__":
-    args = U.parse_args()
+logging.basicConfig(
+    level=logging.DEBUG, format='%(asctime)s|%(levelname)s|%(message)s')
 
-    data_file = args.input
 
-    for i in [
-        'embedding_size',
+def log_args(args):
+    for attr in [
+        'input_file',
+        'embedding_dim',
         'hidden_size',
         'batch_size',
         'num_layers',
         'bidirectional',
     ]:
-        print('{0}:\t{1}'.format(i, getattr(args, i)))
+        logging.info(f'    {attr}:\t{getattr(args, attr)}')
 
-    print('reading data from {0}'.format(os.path.abspath(data_file)))
-    with open(data_file, 'rb') as inf:
-        src_lang, tgt_lang, pairs = pickle.load(inf)
 
-    # print('filter out seqs longer than {0}'.format(MAX_LENGTH))
-    # pairs = [_ for _ in pairs if _[-1] <= MAX_LENGTH]
+def main():
+    args = parse_args()
 
-    print('data loaded...')
-    print('training on {0} seqs'.format(len(pairs)))
+    device = U.get_device('cpu')
+    logging.info(f'found device: {device}')
 
-    sos_symbol = '^'            # symbol for start of a seq
-    tgt_sos_index = tgt_lang.word2index['^']
+    log_args(args)
+
+    infile = os.path.abspath(args.input_file)
+    logging.info(f'reading {infile} ...')
+    with open(infile, 'rb') as inf:
+        # convention: lang0 is always the source language while lang1 is always
+        # the target language
+        lang0, lang1, seq_pairs = pickle.load(inf)
+
+    logging.info(f'loaded {len(seq_pairs)} seqs')
 
     enc = encoder.EncoderRNN(
-        src_lang.n_words,
-        args.embedding_size,
+        lang0.num_tokens,
+        args.embedding_dim,
         args.hidden_size,
         args.num_layers,
         args.bidirectional,
     )
-    enc = enc.to(DEVICE)
+    enc = enc.to(device)
+    logging.info(f'\n{enc}')
 
     num_directions = 2 if args.bidirectional else 1
     dec = decoder.AttnDecoderRNN(
@@ -53,20 +58,27 @@ if __name__ == "__main__":
         # adjust decoder architecture accordingly based on num_directions
         args.hidden_size * num_directions,
         args.num_layers,
-        tgt_lang.n_words,
+        lang1.num_tokens,
         dropout_p=0.1
     )
-    dec.to(DEVICE)
+    dec.to(device)
 
-    hist = train.train_iters(
-        src_lang,
-        tgt_lang,
-        enc,
-        dec,
-        tgt_sos_index,
-        args.num_iters,
-        args.batch_size,
-        args.print_every,
-        args.plot_every,
-        args.learning_rate
-    )
+    # beg_token = '^'
+    # tgt_sos_index = lang1.token2index[lang1.beg_token]
+
+    # hist = train.train_iters(
+    #     src_lang,
+    #     tgt_lang,
+    #     enc,
+    #     dec,
+    #     tgt_sos_index,
+    #     args.num_iters,
+    #     args.batch_size,
+    #     args.print_every,
+    #     args.plot_every,
+    #     args.learning_rate
+    # )
+
+
+if __name__ == "__main__":
+    main()
