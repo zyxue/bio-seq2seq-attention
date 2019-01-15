@@ -6,3 +6,10 @@ In contrast to a general seq2seq problem (e.g. translation), the input
 and output bio sequences are already aligned, e.g. gene prediction,
 protein secondary structure prediction, etc, and the vocabulary sizes
 tend to much smaller.
+
+
+#### Development
+
+```
+python setup.py develop
+```
