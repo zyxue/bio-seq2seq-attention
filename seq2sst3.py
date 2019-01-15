@@ -187,7 +187,8 @@ def train_iters(
         batch_size=1,
         print_every=1000,
         plot_every=100,
-        learning_rate=0.001
+        learning_rate=0.01,
+        lr_update_every=2000,
 ):
     print('Training for {0} steps'.format(n_iters))
     print('Collect loss for plotting every {0} steps'.format(print_every))
@@ -205,6 +206,10 @@ def train_iters(
     # dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
     enc_optim = optim.Adam(enc.parameters(), lr=learning_rate)
     dec_optim = optim.Adam(dec.parameters(), lr=learning_rate)
+    enc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        enc_optim, 'min', min_lr=0.0001)
+    dec_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        dec_optim, 'min', min_lr=0.0001)
 
     tr_pair_tensors = []
     for i in range(n_iters):
@@ -233,6 +238,7 @@ def train_iters(
             tgt_sos_index, enc_optim, dec_optim, criterion,
             batch_size=batch_size
         )
+
         print_loss_total += loss
 
         if idx % print_every == 0:
@@ -245,9 +251,19 @@ def train_iters(
                 idx / n_iters * 100,
                 print_loss_avg))
 
-        if plot_every > 0 and idx % plot_every == 0:
+        if idx % plot_every == 0:
             evaluate_randomly(
                 src_lang, tgt_lang, enc, dec, tgt_sos_index, 1, idx)
+
+        if idx % lr_update_every == 0:
+            enc_scheduler.step(loss)
+            dec_scheduler.step(loss)
+            print('iter {0}, enc lr: {1}, dec lr: {2}'.format(
+                idx,
+                enc_scheduler.optimizer.param_groups[0]['lr'],
+                enc_scheduler.optimizer.param_groups[0]['lr']
+            ))
+
     return print_losses
 
 
