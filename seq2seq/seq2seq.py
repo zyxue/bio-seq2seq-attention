@@ -50,11 +50,11 @@ def main():
         args.bidirectional,
     )
     enc = enc.to(device)
-    logging.info(f'\n{enc}')
+    logging.info(f'encoder => \n{enc}')
 
     num_directions = 2 if args.bidirectional else 1
     dec = decoder.AttnDecoderRNN(
-        args.embedding_size,
+        args.embedding_dim,
         # adjust decoder architecture accordingly based on num_directions
         args.hidden_size * num_directions,
         args.num_layers,
@@ -62,6 +62,7 @@ def main():
         dropout_p=0.1
     )
     dec.to(device)
+    logging.info(f'decoder => \n{dec}')
 
     # beg_token = '^'
     # tgt_sos_index = lang1.token2index[lang1.beg_token]
