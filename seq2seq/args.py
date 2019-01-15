@@ -5,19 +5,19 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '-i', '--input', type=str,
+        '-f', '--input-file', type=str, required=True,
         help='input file with training data'
     )
     parser.add_argument(
-        '-e', '--embedding-size', type=int,
+        '-e', '--embedding-dim', type=int, default=10,
         help='the dimension of embeding vector'
     )
     parser.add_argument(
-        '-d', '--hidden-size', type=int,
+        '-d', '--hidden-size', type=int, default=50,
         help='hidden layer size'
     )
     parser.add_argument(
-        '-b', '--batch-size', type=int, default=1,
+        '-b', '--batch-size', type=int, default=16,
         help='batch size'
     )
     parser.add_argument(
