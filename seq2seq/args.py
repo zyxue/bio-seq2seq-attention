@@ -50,4 +50,9 @@ def parse_args():
         help='if 0, no plots willl be generated'
     )
 
+    parser.add_argument(
+        '--device', default=None,
+        help='force use of CPU or GPU. e.g. cpu or gpu:0'
+    )
+
     return parser.parse_args()
