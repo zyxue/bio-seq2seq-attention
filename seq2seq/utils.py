@@ -5,34 +5,6 @@ import torch
 import numpy as np
 
 
-class Lang(object):
-    def __init__(self, name, vocab=None):
-        self.name = name
-        self.vocab = vocab      # should be a list
-
-        self.word2index = {}
-
-        # with open(vocab_file) as inf:
-        #     for k, i in enumerate(inf):
-        #         i = i.strip()
-        #         if not i:       # empty line
-        #             continue
-        #         self.word2index[i] = k
-
-        for k, i in enumerate(vocab):
-            self.word2index[i] = k
-
-        self.index2word = {j: i for (i, j) in self.word2index.items()}
-
-        self.n_words = len(self.word2index)
-
-    def __repr__(self):
-        return 'Lang("{0}", "{1}")'.format(self.name, self.vocab_file)
-
-    def __str__(self):
-        return 'Lang: {0}, {1} words'.format(self.name, self.n_words)
-
-
 def as_minutes(s):
     m = math.floor(s / 60)
     s -= m * 60
