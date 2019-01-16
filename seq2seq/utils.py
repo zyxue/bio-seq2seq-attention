@@ -26,15 +26,6 @@ def calc_accuracy(seq1, seq2):
             np.array(list(seq2))[:min_len]).sum() / max_len
 
 
-def convert_seq2tensor(lang, seq):
-    '''
-    :param lang: a Language instance
-    :param seq: the sequence string
-    '''
-    indexes = [lang.token2index[i] for i in seq]
-    return torch.tensor(indexes, dtype=torch.long).view(-1, 1)
-
-
 def get_device(s=None):
     if s is None:
         if torch.cuda.is_available():
