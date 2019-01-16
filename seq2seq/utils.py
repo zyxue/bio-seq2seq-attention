@@ -26,14 +26,14 @@ def calc_accuracy(seq1, seq2):
             np.array(list(seq2))[:min_len]).sum() / max_len
 
 
-def tensor_from_sentence(lang, sentence, device):
+def tensor_from_sentence(lang, sentence):
     indexes = [lang.word2index[i] for i in sentence]
-    return torch.tensor(indexes, dtype=torch.long, device=device).view(-1, 1)
+    return torch.tensor(indexes, dtype=torch.long).view(-1, 1)
 
 
-def tensors_from_pair(src_lang, tgt_lang, pair):
-    src_tensor = tensor_from_sentence(src_lang, pair[0])
-    tgt_tensor = tensor_from_sentence(tgt_lang, pair[1])
+def tensors_from_pair(lang0, lang1, pair):
+    src_tensor = tensor_from_sentence(lang0, pair[0])
+    tgt_tensor = tensor_from_sentence(lang1, pair[1])
     seq_len = pair[2]
     return (src_tensor, tgt_tensor, seq_len)
 
