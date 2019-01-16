@@ -40,7 +40,7 @@ setup(
     long_description='TODO',
     include_package_data=True,
     keywords='seq2seq attention',
-    name='TODO',
+    name='seq2seq',
     packages=find_packages(),
     setup_requires=setup_requirements,
     test_suite='tests',
