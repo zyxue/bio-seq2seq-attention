@@ -31,8 +31,8 @@ def gen_langs(lang_config_json):
     with open(lang_config_json, 'rt') as inf:
         dd = json.load(inf)
 
-    lang0 = Language(*dd['lang0'])
-    lang1 = Language(*dd['lang1'])
+    lang0 = Language(**dd['lang0'])
+    lang1 = Language(**dd['lang1'])
     return lang0, lang1
 
 
