@@ -21,7 +21,7 @@ def log_args(args):
         'embedding_dim',
         'hidden_size',
         'batch_size',
-        'num_layers',
+        'num_hidden_layers',
         'bidirectional',
     ]:
         logger.info(f'    {attr}:\t{getattr(args, attr)}')
