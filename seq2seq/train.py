@@ -123,7 +123,8 @@ def prep_training_data(lang0, lang1, data_file, batch_size):
                 if counter == batch_size:
                     seq0s = convert_to_tensor(pad_seqs(seq0s))
                     seq1s = convert_to_tensor(pad_seqs(seq1s))
-                    yield pad_seqs([seq0s, seq1s, seq_lens])
+                    yield [seq0s, seq1s, seq_lens]
+
                     # reset
                     seq0s, seq1s, seq_lens, counter = [], [], [], 0
 
