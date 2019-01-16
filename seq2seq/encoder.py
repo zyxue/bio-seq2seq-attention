@@ -24,7 +24,7 @@ class EncoderRNN(nn.Module):
         L: seq_len
         B: batch_size
         E: embedding size
-        H: hidden layer size
+        H: hidden size
         D: num_directions
         Y: num_hidden_layers
         """
