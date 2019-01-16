@@ -19,15 +19,25 @@ class EncoderRNN(nn.Module):
                           bidirectional=bidirectional)
 
     def forward(self, inputs, hidden):
-        seq_len, batch_size, _ = inputs.shape
+        """
+        size variables:
+        L: seq_len
+        B: batch_size
+        E: embedding size
+        H: hidden layer size
+        D: num_directions
+        Y: num_hidden_layers
+        """
+        L, B = inputs.shape
 
-        # https://pytorch.org/docs/stable/nn.html#torch.nn.Embedding
-        embedded = self.embedding(inputs).view(seq_len, batch_size, -1)
+        # shape: L x B x E
+        emb = self.embedding(inputs)
 
-        # https://pytorch.org/docs/stable/nn.html#torch.nn.GRU
-        output, hidden = self.gru(embedded, hidden)
+        # output shape: L x B x (D * H)
+        # hidden shape: (D * Y) x B x H
+        out, hidden = self.gru(emb, hidden)
 
-        return output, hidden
+        return out, hidden
 
     def init_hidden(self, batch_size):
         directions = 2 if self.bidirectional else 1
