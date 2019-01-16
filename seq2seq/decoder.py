@@ -4,9 +4,14 @@ import torch.nn.functional as F
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, embedding_size, hidden_size, num_layers, output_size,
+    def __init__(self, language, embedding_size, hidden_size, num_layers,
                  dropout_p=0.1):
         super(AttnDecoderRNN, self).__init__()
+
+        # keep the language to be decoded for later convenience
+        self.language = language
+        output_size = language.num_tokens
+
         self.embedding_size = embedding_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers

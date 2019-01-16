@@ -3,15 +3,18 @@ import torch.nn as nn
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, num_tokens, embedding_dim, hidden_size, num_layers,
+    def __init__(self, language, embedding_dim, hidden_size, num_layers,
                  bidirectional=False):
         super(EncoderRNN, self).__init__()
+
+        # keep the language to be encoded for later convenience
+        self.language = language
 
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.bidirectional = bidirectional
 
-        self.embedding = nn.Embedding(num_tokens, embedding_dim)
+        self.embedding = nn.Embedding(language.num_tokens, embedding_dim)
         self.gru = nn.GRU(embedding_dim, hidden_size, num_layers,
                           bidirectional=bidirectional)
 

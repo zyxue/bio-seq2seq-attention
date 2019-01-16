@@ -43,7 +43,7 @@ def main():
     logging.info(f'loaded {len(seq_pairs)} seqs')
 
     enc = encoder.EncoderRNN(
-        lang0.num_tokens,
+        lang0,
         args.embedding_dim,
         args.hidden_size,
         args.num_layers,
@@ -54,11 +54,11 @@ def main():
 
     num_directions = 2 if args.bidirectional else 1
     dec = decoder.AttnDecoderRNN(
+        lang1,
         args.embedding_dim,
         # adjust decoder architecture accordingly based on num_directions
         args.hidden_size * num_directions,
         args.num_layers,
-        lang1.num_tokens,
         dropout_p=0.1
     )
     dec.to(device)
