@@ -38,28 +38,37 @@ def encode(encoder, data_batch, encoder_optim):
     return out, hid
 
 
+def init_first_decoder_output_token(lang1, batch_size):
+    """
+    for batch_size of 2, the return value will be like
+    tensor([[0],
+           [0]])
+    """
+    idx = lang1.token2index[lang1.beg_token]
+    torch.tensor([[idx] * batch_size]).view(-1, 1)
+
+
 def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
           criterion, teacher_forcing_ratio=0.5):
     enc_out, enc_hid = encode(encoder, data_batch, encoder_optim)
-    import pdb; pdb.set_trace()
-
-    lang1 = decoder.language
-    beg_tk_idx = lang1.token2index[lang1.beg_token]
 
     decoder_optim.zero_grad()
 
-    # take the hidden state from the last step in the encoder, continue in the
-    # decoder
-    dec_hid = enc_hid
-    # init the first input for the decoder
-    dec_in = torch.tensor([[lang1_beg_token_index] * batch_size], device=device).view(-1, 1)
+    seq0s, seq1s, seq_lens = data_batch  # all in indices
+    seq_len, batch_size = seq0s.shape
 
-    # decide to use teacher forcing or not
-    use_tf = True if random.random() < teacher_forcing_ratio else False
+    # inherit the hidden state from the last step output from the encoder
+    dec_hid = enc_hid
+
+    dec_in = init_first_decoder_output_token(decoder.language, batch_size)
+
+    # init the first input for the decoder
+    import pdb; pdb.set_trace()
+
+    use_tforce = True if random.random() < teacher_forcing_ratio else False
 
     loss = 0
-    seq_len = max(seq_lens)
-    if use_tf:
+    if use_tforce:
         for di in range(seq_len):
             dec_out, dec_hid, dec_attn = dec(dec_in, dec_hid, enc_outs)
             loss += criterion(dec_out, tgt_tensor[di].view(-1))
