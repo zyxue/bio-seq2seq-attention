@@ -1,11 +1,11 @@
-import os
-import pickle
+import json
 import logging
 
 from seq2seq import encoder
 from seq2seq import decoder
 from seq2seq import train
 from seq2seq.args import parse_args
+from seq2seq.objs import Language
 from seq2seq import utils as U
 
 
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def log_args(args):
     for attr in [
-        'input_file',
+        'data_file',
         'embedding_dim',
         'hidden_size',
         'batch_size',
@@ -25,6 +25,15 @@ def log_args(args):
         'bidirectional',
     ]:
         logger.info(f'    {attr}:\t{getattr(args, attr)}')
+
+
+def gen_langs(lang_config_json):
+    with open(lang_config_json, 'rt') as inf:
+        dd = json.load(inf)
+
+    lang0 = Language(*dd['lang0'])
+    lang1 = Language(*dd['lang1'])
+    return lang0, lang1
 
 
 def main():
@@ -35,14 +44,8 @@ def main():
 
     log_args(args)
 
-    infile = os.path.abspath(args.input_file)
-    logger.info(f'reading {infile} ...')
-    with open(infile, 'rb') as inf:
-        # convention: lang0 is always the source language while lang1 is always
-        # the target language
-        lang0, lang1, seq_pairs = pickle.load(inf)
-
-    logger.info(f'loaded {len(seq_pairs)} seqs')
+    logger.info(f'loading languages from {args.config}')
+    lang0, lang1 = gen_langs(args.config)
 
     enc = encoder.EncoderRNN(
         lang0,
@@ -67,17 +70,13 @@ def main():
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
-    hist = train.train_iters(
-        lang0,
-        lang1,
-        enc,
-        dec,
-        lang1.token2index[lang1.beg_token],
-        args.num_iters,
-        args.batch_size,
-        args.print_every,
-        args.plot_every,
-        args.learning_rate
+    hist = train.train_iters(enc, dec,
+                             args.data_file,
+                             args.num_iters,
+                             args.batch_size,
+                             args.learning_rate,
+                             args.print_interval,
+                             args.plot_interval,
     )
 
 
