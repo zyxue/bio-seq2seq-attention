@@ -5,11 +5,11 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '-f', '--input-file', type=str, required=True,
+        '-f', '--data-file', type=str, required=True,
         help='input file with training data'
     )
     parser.add_argument(
-        '-f', '--lang-config', type=str, required=True,
+        '-f', '--config', type=str, required=True,
         help='config file in json for input (lang0) and output (lang1) languages'
     )
 
