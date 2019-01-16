@@ -38,13 +38,13 @@ def encode(encoder, data_batch, encoder_optim):
     return out, hid
 
 
-def init_first_decoder_output_token(lang1, batch_size):
+def init_beg_token(lang, batch_size):
     """
     for batch_size of 2, the return value will be like
     tensor([[0],
            [0]])
     """
-    idx = lang1.token2index[lang1.beg_token]
+    idx = lang.token2index[lang.beg_token]
     torch.tensor([[idx] * batch_size]).view(-1, 1)
 
 
@@ -60,10 +60,8 @@ def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
     # inherit the hidden state from the last step output from the encoder
     dec_hid = enc_hid
 
-    dec_in = init_first_decoder_output_token(decoder.language, batch_size)
-
-    # init the first input for the decoder
-    import pdb; pdb.set_trace()
+    # init the first output token for the decoder
+    dec_in = init_beg_token(decoder.language, batch_size)
 
     use_tforce = True if random.random() < teacher_forcing_ratio else False
 
