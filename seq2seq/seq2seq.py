@@ -12,6 +12,8 @@ from seq2seq import utils as U
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s|%(levelname)s|%(message)s')
 
+logger = logging.getLogger(__name__)
+
 
 def log_args(args):
     for attr in [
@@ -22,25 +24,25 @@ def log_args(args):
         'num_layers',
         'bidirectional',
     ]:
-        logging.info(f'    {attr}:\t{getattr(args, attr)}')
+        logger.info(f'    {attr}:\t{getattr(args, attr)}')
 
 
 def main():
     args = parse_args()
 
     device = U.get_device('cpu')
-    logging.info(f'found device: {device}')
+    logger.info(f'found device: {device}')
 
     log_args(args)
 
     infile = os.path.abspath(args.input_file)
-    logging.info(f'reading {infile} ...')
+    logger.info(f'reading {infile} ...')
     with open(infile, 'rb') as inf:
         # convention: lang0 is always the source language while lang1 is always
         # the target language
         lang0, lang1, seq_pairs = pickle.load(inf)
 
-    logging.info(f'loaded {len(seq_pairs)} seqs')
+    logger.info(f'loaded {len(seq_pairs)} seqs')
 
     enc = encoder.EncoderRNN(
         lang0,
@@ -50,7 +52,7 @@ def main():
         args.bidirectional,
     )
     enc = enc.to(device)
-    logging.info(f'encoder => \n{enc}')
+    logger.info(f'encoder => \n{enc}')
 
     num_directions = 2 if args.bidirectional else 1
     dec = decoder.AttnDecoderRNN(
@@ -62,9 +64,9 @@ def main():
         dropout_p=0.1
     )
     dec.to(device)
-    logging.info(f'decoder => \n{dec}')
+    logger.info(f'decoder => \n{dec}')
 
-    logging.info('start training ...')
+    logger.info('start training ...')
     hist = train.train_iters(
         lang0,
         lang1,
