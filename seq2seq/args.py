@@ -14,7 +14,7 @@ def parse_args():
     )
 
     parser.add_argument(
-        '-e', '--embedding-dim', type=int, default=10,
+        '-e', '--embedding-dim', type=int, required=True,
         help='the dimension of embeding vector'
     )
     parser.add_argument(
@@ -22,11 +22,11 @@ def parse_args():
         help='hidden layer size'
     )
     parser.add_argument(
-        '-b', '--batch-size', type=int, default=16,
+        '-b', '--batch-size', type=int, default=2,
         help='batch size'
     )
     parser.add_argument(
-        '-l', '--num-layers', type=int, default=1,
+        '-l', '--num-hidden-layers', type=int, default=2,
         help='number of hidden layers'
     )
     parser.add_argument(
