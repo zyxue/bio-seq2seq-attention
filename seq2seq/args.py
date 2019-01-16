@@ -9,6 +9,11 @@ def parse_args():
         help='input file with training data'
     )
     parser.add_argument(
+        '-f', '--lang-config', type=str, required=True,
+        help='config file in json for input (lang0) and output (lang1) languages'
+    )
+
+    parser.add_argument(
         '-e', '--embedding-dim', type=int, default=10,
         help='the dimension of embeding vector'
     )
