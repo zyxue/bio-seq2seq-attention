@@ -1,16 +1,21 @@
 import time
 import random
+import time
+import logging
 
 import torch
 import torch.nn as nn
 from torch import optim
 
 from seq2seq.evaluate import evaluate_randomly
-from seq2seq.utils import tensors_from_pair, time_since
+import seq2seq.utils as U
 
 
-def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
-          tgt_sos_index, enc_optim, dec_optim,
+logger = logging.getLogger(__name__)
+
+
+def train(enc, dec, src_tensor, tgt_tensor, seq_lens,
+          lang1_beg_token_index, enc_optim, dec_optim,
           criterion, device, teacher_forcing_ratio=0.5, batch_size=1):
     enc_optim.zero_grad()
     dec_optim.zero_grad()
@@ -31,7 +36,7 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     # decoder
     dec_hid = enc_hid
     # init the first input for the decoder
-    dec_in = torch.tensor([[tgt_sos_index] * batch_size], device=device).view(-1, 1)
+    dec_in = torch.tensor([[lang1_beg_token_index] * batch_size], device=device).view(-1, 1)
 
     # decide to use teacher forcing or not
     use_tf = True if random.random() < teacher_forcing_ratio else False
@@ -62,86 +67,97 @@ def train(src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
     return loss.item() / seq_len.item()
 
 
-def train_iters(
-        src_lang, tgt_lang, enc, dec, tgt_sos_index, n_iters,
-        batch_size=1,
-        print_every=1000,
-        plot_every=100,
-        learning_rate=0.01,
-        lr_update_every=2000,
-):
-    print('Training for {0} steps'.format(n_iters))
-    print('Collect loss for plotting every {0} steps'.format(print_every))
-
-    if plot_every > 0:
-        print('Plot attention map every {0} steps'.format(plot_every))
+def log_plot(plot_interval):
+    if plot_interval > 0:
+        logger.info(f'plot attention map every {plot_interval} steps')
     else:
-        print('No attention map will be plotted during training')
+        logger.warning(f'NO attention map will be plotted during training')
 
-    start = time.time()
+
+def init_optimizers(encoder, decoder, lr):
+    opt0 = optim.Adam(encoder.parameters(), lr=lr)
+    opt1 = optim.Adam(decoder.parameters(), lr=lr)
+    return opt0, opt1
+
+
+def prep_training_data(lang0, lang1, data_file, batch_size):
+    """
+    prepare training data in tensors, returns an infinite iterator
+
+    :param seq_pairs: a list of (seq0, seq1, length) tuples
+    """
+    # assuming lines in data_file are already shuffled
+    seq0s, seq1s, seq_lens, counter = [], [], [], 0
+    while True:
+        with open(data_file, 'rt') as inf:
+            for line in inf:
+                seq0, seq1 = line.strip().split()
+                assert len(seq0) == len(seq1)
+
+                seq0s.append(lang0.seq2indices(seq0))
+                seq1s.append(lang1.seq2indices(seq1))
+                seq_lens.append(len(seq0))
+                counter += 1
+
+                if counter == batch_size:
+                    yield [seq0s, seq1s, seq_lens]
+                    # reset
+                    seq0s, seq1s, seq_lens, counter = [], [], [], 0
+
+
+def train_iters(encoder, decoder, data_file, n_iters, batch_size=1, lr=0.01,
+                lr_update_every=2000, print_interval=1000, plot_interval=100):
+    logger.info('Training for {0} steps'.format(n_iters))
+    logger.info('Collect loss for plotting every {print_interval} steps')
+
+    log_plot(plot_interval)
+
+    data_iter = prep_training_data(encoder.language, decoder.language,
+                                   data_file, batch_size)
+    opm_enc, opm_dec = init_optimizers(encoder, decoder, lr)
+    criterion = nn.NLLLoss()
+
+    for k, i in enumerate(data_iter):
+        print(k, i)
+        if k == 100:
+            break
+
     print_loss_total = 0
     print_losses = []
 
-    # enc_optim = optim.SGD(enc.parameters(), lr=learning_rate)
-    # dec_optim = optim.SGD(dec.parameters(), lr=learning_rate)
-    enc_optim = optim.Adam(enc.parameters(), lr=learning_rate)
-    dec_optim = optim.Adam(dec.parameters(), lr=learning_rate)
-    enc_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        enc_optim, 'min', min_lr=0.0001)
-    dec_scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        dec_optim, 'min', min_lr=0.0001)
+    # for idx in range(1, n_iters + 1):
+    #     src_tensor, tgt_tensor, seq_lens = tr_pair_tensors[idx - 1]
 
-    tr_pair_tensors = []
-    for i in range(n_iters):
-        src_tsrs, tgt_tsrs, seq_lens = [], [], []
-        for j in range(batch_size):
-            _s, _t, _l = tensors_from_pair(
-                src_lang, tgt_lang, random.choice(pairs))
-            src_tsrs.append(_s)
-            tgt_tsrs.append(_t)
-            seq_lens.append(_l)
-            # TODO: padding should happen here
-        tr_pair_tensors.append([
-            # make sure it's (seq_len, batch, input_size)
-            torch.stack(src_tsrs, dim=1),
-            torch.stack(tgt_tsrs, dim=1),
-            torch.tensor(seq_lens),
-        ])
+    #     beg_tk_idx = lang1.token2index[lang1.beg_token],
+    #     loss = train(
+    #         lang0, lang1, enc, dec, src_tensor, tgt_tensor, seq_lens,
+    #         lang1_beg_token_index, enc_optim, dec_optim, criterion,
+    #         batch_size=batch_size
+    #     )
 
-    criterion = nn.NLLLoss()
+    #     print_loss_total += loss
 
-    for idx in range(1, n_iters + 1):
-        src_tensor, tgt_tensor, seq_lens = tr_pair_tensors[idx - 1]
+    #     if idx % print_every == 0:
+    #         print_loss_avg = print_loss_total / print_every
+    #         print_losses.append(print_loss_avg)
+    #         print_loss_total = 0
+    #         print('%s (%d %d%%) %.4f' % (
+    #             time_since(start, idx / n_iters),
+    #             idx,
+    #             idx / n_iters * 100,
+    #             print_loss_avg))
 
-        loss = train(
-            src_lang, tgt_lang, enc, dec, src_tensor, tgt_tensor, seq_lens,
-            tgt_sos_index, enc_optim, dec_optim, criterion,
-            batch_size=batch_size
-        )
+    #     if idx % plot_every == 0:
+    #         evaluate_randomly(
+    #             lang0, lang1, enc, dec, lang1_beg_token_index, 1, idx)
 
-        print_loss_total += loss
-
-        if idx % print_every == 0:
-            print_loss_avg = print_loss_total / print_every
-            print_losses.append(print_loss_avg)
-            print_loss_total = 0
-            print('%s (%d %d%%) %.4f' % (
-                time_since(start, idx / n_iters),
-                idx,
-                idx / n_iters * 100,
-                print_loss_avg))
-
-        if idx % plot_every == 0:
-            evaluate_randomly(
-                src_lang, tgt_lang, enc, dec, tgt_sos_index, 1, idx)
-
-        if idx % lr_update_every == 0:
-            enc_scheduler.step(loss)
-            dec_scheduler.step(loss)
-            print('iter {0}, enc lr: {1}, dec lr: {2}'.format(
-                idx,
-                enc_scheduler.optimizer.param_groups[0]['lr'],
-                enc_scheduler.optimizer.param_groups[0]['lr']
-            ))
+    #     if idx % lr_update_every == 0:
+    #         enc_scheduler.step(loss)
+    #         dec_scheduler.step(loss)
+    #         print('iter {0}, enc lr: {1}, dec lr: {2}'.format(
+    #             idx,
+    #             enc_scheduler.optimizer.param_groups[0]['lr'],
+    #             enc_scheduler.optimizer.param_groups[0]['lr']
+    #         ))
 
     return print_losses
