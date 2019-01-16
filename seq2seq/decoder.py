@@ -46,13 +46,13 @@ class AttnDecoderRNN(nn.Module):
 
         batch_size = input.shape[0]
         # 1 means one step: decoder always decodes one step at a time
-        embedded = self.embedding(input).view(1, batch_size, -1)
-        embedded = self.dropout(embedded)
+        emb = self.embedding(input).view(1, batch_size, -1)
+        emb = self.dropout(emb)
 
         seq_len = encoder_outputs.shape[0]
         layer_x_direc_size, batch_size, hidden_size = hidden.shape
 
-        gru_out, hidden = self.gru(embedded, hidden)
+        gru_out, hidden = self.gru(emb, hidden)
 
         # L x B
         attn_prod = torch.mul(self.attn(gru_out), encoder_outputs).sum(dim=2)
