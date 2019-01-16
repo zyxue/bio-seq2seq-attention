@@ -35,13 +35,13 @@ class AttnDecoderRNN(nn.Module):
 
         Sd: decoder sequence length, it should be one in the decoder since the
         output sequence is decoded one step at a time
-        S: sequence length
+        L: sequence length
         B: batch size
         H: hidden size
 
         input: B x 1
         hidden: 1 x B x H
-        encoder_outputs: S x B x H
+        encoder_outputs: L x B x H
         """
 
         batch_size = input.shape[0]
@@ -54,7 +54,7 @@ class AttnDecoderRNN(nn.Module):
 
         gru_out, hidden = self.gru(embedded, hidden)
 
-        # S x B
+        # L x B
         attn_prod = torch.mul(self.attn(gru_out), encoder_outputs).sum(dim=2)
 
         # attn_weights = F.softmax(attn_prod, dim=0)
