@@ -48,3 +48,6 @@ class Language(object):
 
     def __str__(self):
         return f'Language: {self.name}, {len(self.vocab)} tokens'
+
+    def seq2indices(self, seq):
+        return [self.token2index[i] for i in seq]
