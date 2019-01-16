@@ -14,30 +14,39 @@ import seq2seq.utils as U
 logger = logging.getLogger(__name__)
 
 
-def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
-          criterion, teacher_forcing_ratio=0.5):
-    lang1 = decoder.language
-    beg_tk_idx = lang1.token2index[lang1.beg_token]
-
+def encode(encoder, data_batch, encoder_optim):
+    """run data through encoder and return the encoded tensors"""
     encoder_optim.zero_grad()
-    decoder_optim.zero_grad()
 
     # encoding source sequence
     seq0s, seq1s, seq_lens = data_batch  # all in indices
-    batch_size = len(seq0s[0])
 
-    enc_hid = encoder.init_hidden(batch_size)
-    enc_outs, enc_hid = encoder(seq0s, enc_hid)
+    L, B = seq0s.shape
+    D = 2 if encoder.bidirectional else 1
+    Y = encoder.num_layers
+    H = encoder.hidden_size
 
-    import pdb; pdb.set_trace()
+    hid = encoder.init_hidden(B)
+    out, hid = encoder(seq0s, hid)
 
     if encoder.bidirectional:
-        # as the enc_outs has a 2x factor for hidden size, so reshape hidden to
-        # match that
-        enc_hid = torch.cat([
-            enc_hid[:encoder.num_layers, :, :],
-            enc_hid[encoder.num_layers:, :, :]
-        ], dim=2)
+        # concat hidden neurons from two RNN per layer
+        hidv = hid.view(Y, D, B, H)
+        h0 = hidv[:, 0, :, :]
+        h1 = hidv[:, 1, :, :]
+        hid = torch.cat([h0, h1], dim=2)
+    return out, hid
+
+
+def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
+          criterion, teacher_forcing_ratio=0.5):
+    enc_out, enc_hid = encode(encoder, data_batch, encoder_optim)
+    import pdb; pdb.set_trace()
+
+    lang1 = decoder.language
+    beg_tk_idx = lang1.token2index[lang1.beg_token]
+
+    decoder_optim.zero_grad()
 
     # take the hidden state from the last step in the encoder, continue in the
     # decoder
