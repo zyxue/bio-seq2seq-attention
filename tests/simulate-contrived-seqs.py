@@ -44,9 +44,11 @@ def sumprod(tokens0, seq_len, lang1):
     return tokens1
 
 
-def simulate(lang0, lang1, num_seqs, seq_len, method, output_file):
+def simulate(lang0, lang1, num_seqs, seq_len_min, seq_len_max,
+             method, output_file):
     with open(output_file, 'wt') as opf:
         for i in tqdm(range(num_seqs)):
+            seq_len = np.random.randint(seq_len_min, seq_len_max)
             tks0 = np.random.choice(lang0.vocab, seq_len)
             tks1 = eval(method)(tks0, seq_len, lang1)
             seq0 = ''.join(tks0)
@@ -70,11 +72,12 @@ def main():
 
     # TODO: add argparse
     num_seqs = 10000
-    seq_len = 10
+    seq_len_min = 10
+    seq_len_max = 20
     method = 'sumprod'
-    out = f'./{method}_num_seqs_{num_seqs}_seq_len_{seq_len}.csv'
+    out = f'./{method}_num_seqs_{num_seqs}_seq_len_{seq_len_min}_to_{seq_len_max}.csv'
     logger.info(f'simulating {num_seqs} seq pairs using {method} ...')
-    simulate(lang0, lang1, num_seqs, seq_len, method, out)
+    simulate(lang0, lang1, num_seqs, seq_len_min, seq_len_max, method, out)
 
 
 if __name__ == "__main__":
