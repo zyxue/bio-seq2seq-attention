@@ -87,9 +87,23 @@ def init_optimizers(encoder, decoder, lr):
     return opt0, opt1
 
 
+def pad_seqs(seqs):
+    max_len = max(len(i) for i in seqs)
+
+    # 2 corresponds to the unk_token. TODO: replace 2 with something more sensible
+    seqs = [i + [2] * (max_len - len(i)) for i in seqs]
+    return seqs
+
+
+def convert_to_tensor(seqs):
+    # should be of shape (seq_len, batch, 1) based on pytorch convention:
+    # https://pytorch.org/docs/stable/nn.html#torch.nn.GRU
+    return torch.tensor(seqs).transpose(1, 0)
+
+
 def prep_training_data(lang0, lang1, data_file, batch_size):
     """
-    prepare training data in tensors, returns an infinite iterator
+    prepare training data in tensors, returns an infinite generator
 
     :param seq_pairs: a list of (seq0, seq1, length) tuples
     """
@@ -107,7 +121,9 @@ def prep_training_data(lang0, lang1, data_file, batch_size):
                 counter += 1
 
                 if counter == batch_size:
-                    yield [seq0s, seq1s, seq_lens]
+                    seq0s = convert_to_tensor(pad_seqs(seq0s))
+                    seq1s = convert_to_tensor(pad_seqs(seq1s))
+                    yield pad_seqs([seq0s, seq1s, seq_lens])
                     # reset
                     seq0s, seq1s, seq_lens, counter = [], [], [], 0
 
