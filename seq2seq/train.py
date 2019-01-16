@@ -14,22 +14,29 @@ import seq2seq.utils as U
 logger = logging.getLogger(__name__)
 
 
-def train(enc, dec, src_tensor, tgt_tensor, seq_lens,
-          lang1_beg_token_index, enc_optim, dec_optim,
-          criterion, device, teacher_forcing_ratio=0.5, batch_size=1):
-    enc_optim.zero_grad()
-    dec_optim.zero_grad()
+def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
+          criterion, teacher_forcing_ratio=0.5):
+    lang1 = decoder.language
+    beg_tk_idx = lang1.token2index[lang1.beg_token]
+
+    encoder_optim.zero_grad()
+    decoder_optim.zero_grad()
 
     # encoding source sequence
-    enc_hid = enc.init_hidden(batch_size)
-    enc_outs, enc_hid = enc(src_tensor, enc_hid)
+    seq0s, seq1s, seq_lens = data_batch  # all in indices
+    batch_size = len(seq0s[0])
 
-    if enc.bidirectional:
+    enc_hid = encoder.init_hidden(batch_size)
+    enc_outs, enc_hid = encoder(seq0s, enc_hid)
+
+    import pdb; pdb.set_trace()
+
+    if encoder.bidirectional:
         # as the enc_outs has a 2x factor for hidden size, so reshape hidden to
         # match that
         enc_hid = torch.cat([
-            enc_hid[:enc.num_layers, :, :],
-            enc_hid[enc.num_layers:, :, :]
+            enc_hid[:encoder.num_layers, :, :],
+            enc_hid[encoder.num_layers:, :, :]
         ], dim=2)
 
     # take the hidden state from the last step in the encoder, continue in the
