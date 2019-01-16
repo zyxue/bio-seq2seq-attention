@@ -8,6 +8,17 @@ protein secondary structure prediction, etc, and the vocabulary sizes
 tend to much smaller.
 
 
+#### size variable naming convention
+
+```
+L: seq_len
+B: batch_size
+E: embedding size
+H: hidden size
+D: num_directions
+Y: num_hidden_layers
+```
+
 #### Development
 
 ```
