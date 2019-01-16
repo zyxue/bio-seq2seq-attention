@@ -57,6 +57,7 @@ def simulate(lang0, lang1, num_seqs, seq_len, method, output_file):
 def main():
     vocab0 = list(map(str, range(10)))
     vocab1 = string.ascii_letters + string.digits + string.punctuation
+    # exclude reserved tokens
     vocab1 = [_ for _ in vocab1 if _ not in ['^', '$', '*']]
 
     lang0 = Language('lang0', vocab0)
@@ -67,6 +68,7 @@ def main():
 
     dump_lang_config(lang0, lang1, './lang_config.json')
 
+    # TODO: add argparse
     num_seqs = 10000
     seq_len = 10
     method = 'sumprod'
