@@ -9,7 +9,7 @@ def parse_args():
         help='input file with training data'
     )
     parser.add_argument(
-        '-f', '--config', type=str, required=True,
+        '-c', '--config', type=str, required=True,
         help='config file in json for input (lang0) and output (lang1) languages'
     )
 
