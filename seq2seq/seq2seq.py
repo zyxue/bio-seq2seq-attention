@@ -51,7 +51,7 @@ def main():
         lang0,
         args.embedding_dim,
         args.hidden_size,
-        args.num_layers,
+        args.num_hidden_layers,
         args.bidirectional,
     )
     enc = enc.to(device)
@@ -63,7 +63,7 @@ def main():
         args.embedding_dim,
         # adjust decoder architecture accordingly based on num_directions
         args.hidden_size * num_directions,
-        args.num_layers,
+        args.num_hidden_layers,
         dropout_p=0.1
     )
     dec.to(device)
