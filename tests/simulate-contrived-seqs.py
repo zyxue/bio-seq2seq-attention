@@ -44,6 +44,24 @@ def sumprod(tokens0, seq_len, lang1):
     return tokens1
 
 
+def prod(tokens0, seq_len, lang1):
+    """
+    multiply to its right or left neighbour depending on the position of the
+    current token in the sequence
+    """
+    tokens1 = []
+    for i in range(seq_len):
+        a = int(tokens0[i])
+        if i < seq_len // 2:
+            b = int(tokens0[i + 1])
+        else:
+            b = int(tokens0[i - 1])
+            idx = a * b
+        idx = a * b
+        tokens1.append(lang1.index2token[idx])
+    return tokens1
+
+
 def simulate(lang0, lang1, num_seqs, seq_len_min, seq_len_max,
              method, output_file):
     with open(output_file, 'wt') as opf:
@@ -74,7 +92,8 @@ def main():
     num_seqs = 10000
     seq_len_min = 10
     seq_len_max = 20
-    method = 'sumprod'
+    # method = 'sumprod'
+    method = 'prod'
     out = f'./{method}_num_seqs_{num_seqs}_seq_len_{seq_len_min}_to_{seq_len_max}.csv'
     logger.info(f'simulating {num_seqs} seq pairs using {method} ...')
     simulate(lang0, lang1, num_seqs, seq_len_min, seq_len_max, method, out)
