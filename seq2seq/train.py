@@ -14,7 +14,6 @@ import seq2seq.utils as U
 logger = logging.getLogger(__name__)
 
 
-
 def log_plot(plot_interval):
     if plot_interval > 0:
         logger.info(f'plot attention map every {plot_interval} steps')
@@ -28,28 +27,31 @@ def init_optimizers(encoder, decoder, lr):
     return opt0, opt1
 
 
-def train_iters(encoder, decoder, data_file, n_iters, batch_size=1, lr=0.01,
-                lr_update_every=2000, tf_ratio=0.5,
+def train_iters(encoder, decoder, data_file, n_iters, batch_size, device,
+                lr=0.01, lr_update_every=2000,
+                tf_ratio=0.5,
                 print_interval=1000, plot_interval=100):
     logger.info('Training for {0} steps'.format(n_iters))
     logger.info('Collect loss for plotting every {print_interval} steps')
 
     log_plot(plot_interval)
 
-    data_iter = prep_training_data(encoder.language, decoder.language,
-                                   data_file, batch_size)
     encoder_optim, decoder_optim = init_optimizers(encoder, decoder, lr)
     loss_func = nn.NLLLoss()
 
-    print_loss_total = 0
+    data_iter = prep_training_data(
+        encoder.language, decoder.language, data_file, batch_size, device)
+
+    # print_loss_total = 0
     print_losses = []
 
     for idx in range(1, n_iters + 1):
         batch = next(data_iter)
         loss = train_on_one_batch(
             encoder, decoder, encoder_optim, decoder_optim,
-            batch, loss_func, tf_ratio=0.5
+            batch, loss_func, tf_ratio=0.5,
         )
+        print(loss)
 
         # print_loss_total += loss
 

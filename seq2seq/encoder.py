@@ -55,8 +55,9 @@ class EncoderRNN(nn.Module):
         hid_bi = torch.cat([h0, h1], dim=2)
         return out, hid_bi
 
-    def init_hidden(self, batch_size):
+    def init_hidden(self, batch_size, device):
         directions = 2 if self.bidirectional else 1
         return torch.zeros(self.num_layers * directions,
                            batch_size,
-                           self.hidden_size)
+                           self.hidden_size,
+                           device=device)

@@ -39,7 +39,7 @@ def gen_langs(lang_config_json):
 def main():
     args = parse_args()
 
-    device = U.get_device('cpu')
+    device = U.get_device(args.device)
     logger.info(f'found device: {device}')
 
     log_args(args)
@@ -74,6 +74,7 @@ def main():
                              args.data_file,
                              args.num_iters,
                              args.batch_size,
+                             device,
                              args.learning_rate,
                              args.print_interval,
                              args.plot_interval,

@@ -9,13 +9,13 @@ def pad_seqs(seqs):
     return seqs
 
 
-def convert_to_tensor(seqs):
+def convert_to_tensor(seqs, device):
     # should be of shape (seq_len, batch, 1) based on pytorch convention:
     # https://pytorch.org/docs/stable/nn.html#torch.nn.GRU
-    return torch.tensor(seqs).transpose(1, 0)
+    return torch.tensor(seqs, device=device).transpose(1, 0)
 
 
-def prep_training_data(lang0, lang1, data_file, batch_size):
+def prep_training_data(lang0, lang1, data_file, batch_size, device):
     """
     prepare training data in tensors, returns an infinite generator
 
@@ -35,8 +35,9 @@ def prep_training_data(lang0, lang1, data_file, batch_size):
                 counter += 1
 
                 if counter == batch_size:
-                    seq0s = convert_to_tensor(pad_seqs(seq0s))
-                    seq1s = convert_to_tensor(pad_seqs(seq1s))
+                    seq0s = convert_to_tensor(pad_seqs(seq0s), device)
+                    seq1s = convert_to_tensor(pad_seqs(seq1s), device)
+                    seq_lens = torch.tensor(seq_lens, device=device)
                     yield [seq0s, seq1s, seq_lens]
 
                     # reset

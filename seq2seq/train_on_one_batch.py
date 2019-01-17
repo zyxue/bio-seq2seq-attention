@@ -15,13 +15,13 @@ def encode(encoder, data_batch):
     # seq0s.shape: L x B
     _, B = seq0s.shape
 
-    hid = encoder.init_hidden(B)
+    hid = encoder.init_hidden(B, device=seq0s.device)
     out, hid = encoder(seq0s, hid)
 
     return out, hid
 
 
-def init_decoder_input(lang, batch_size):
+def init_decoder_input(lang, batch_size, device):
     """
     initialize decoder input, i.e. prepare a batch of beginning tokens
 
@@ -34,7 +34,7 @@ def init_decoder_input(lang, batch_size):
     # repeat method in torch not found
     # reshape following convention: 
     arr = np.repeat([[idx]], batch_size, axis=1)
-    return torch.tensor(arr)
+    return torch.tensor(arr, device=device)
 
 
 def use_tf(ratio):
@@ -52,7 +52,7 @@ def decode(decoder, data_batch, encoder_out, encoder_hidden, loss_func,
     seq_len, batch_size = seq0s.shape
 
     # init the first output token for the decoder, L x B and L=1
-    inp = init_decoder_input(decoder.language, batch_size)
+    inp = init_decoder_input(decoder.language, batch_size, device=seq0s.device)
 
     # inherit the hidden state from the last step output from the encoder
     hid = encoder_hidden
