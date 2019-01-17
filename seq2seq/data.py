@@ -4,7 +4,9 @@ import torch
 def pad_seqs(seqs):
     max_len = max(len(i) for i in seqs)
 
-    # 2 corresponds to the unk_token. TODO: replace 2 with something more sensible
+    # 2 corresponds to the unk_token.
+    # TODO: replace 2 with something more sensible, or rewrite data.py with
+    # some pytorch-provided class
     seqs = [i + [2] * (max_len - len(i)) for i in seqs]
     return seqs
 
