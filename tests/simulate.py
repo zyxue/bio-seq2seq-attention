@@ -7,7 +7,10 @@ from tqdm import tqdm
 
 from seq2seq.objs import Language
 
+"""
+simulate contrived sequences for testing purposes
 
+"""
 logging.basicConfig(
     level=logging.DEBUG, format='%(asctime)s|%(levelname)s|%(message)s')
 
