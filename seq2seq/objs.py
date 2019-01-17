@@ -19,6 +19,10 @@ class Language(object):
 
         self.init_indices()
 
+        self.beg_token_index = self.token2index[beg_token]
+        self.end_token_index = self.token2index[end_token]
+        self.unk_token_index = self.token2index[unk_token]
+
         self.num_tokens = len(self.token2index)
 
     def init_indices(self):
