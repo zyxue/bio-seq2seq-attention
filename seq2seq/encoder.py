@@ -23,19 +23,33 @@ class EncoderRNN(nn.Module):
         size variables:
         L: seq_len
         B: batch_size
-        E: embedding size
-        H: hidden size
+        E: embedding_dim
+        H: hidden_size
         D: num_directions
         Y: num_hidden_layers
+        T: num_tokens
         """
+        Y = self.num_layers
+        H = self.hidden_size
+        D = 2 if self.bidirectional else 1
+
         L, B = inputs.shape
 
-        # shape: L x B x E
+        # self.embedding shape: T0 x E
+        # inputs.shape: L x B
+        # emb.shape: L x B x E
         emb = self.embedding(inputs)
 
-        # output shape: L x B x (D * H)
-        # hidden shape: (D * Y) x B x H
-        out, hidden = self.gru(emb, hidden)
+        # out.shape: L x B x (D * H)
+        # hid.shape: (D * Y) x B x H
+        out, hid = self.gru(emb, hidden)
+
+        if self.bidirectional:
+            # concat hidden neurons from two RNN per layer
+            hidv = hid.view(Y, D, B, H)
+            h0 = hidv[:, 0, :, :]
+            h1 = hidv[:, 1, :, :]
+            hid = torch.cat([h0, h1], dim=2)
 
         return out, hidden
 

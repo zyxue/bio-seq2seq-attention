@@ -16,26 +16,21 @@ logger = logging.getLogger(__name__)
 
 
 def encode(encoder, data_batch, encoder_optim):
-    """run data through encoder and return the encoded tensors"""
+    """
+    run data through encoder and return the encoded tensors
+
+    data_batch is a tuple of (seq0s, seq1s, seq_lens).
+    seq0s and seq1s should be in indices
+    """
     encoder_optim.zero_grad()
 
-    # encoding source sequence
-    seq0s, seq1s, seq_lens = data_batch  # all in indices
-
-    L, B = seq0s.shape
-    D = 2 if encoder.bidirectional else 1
-    Y = encoder.num_layers
-    H = encoder.hidden_size
+    seq0s, _, _ = data_batch
+    # seq0s.shape: L x B
+    _, B = seq0s.shape
 
     hid = encoder.init_hidden(B)
     out, hid = encoder(seq0s, hid)
 
-    if encoder.bidirectional:
-        # concat hidden neurons from two RNN per layer
-        hidv = hid.view(Y, D, B, H)
-        h0 = hidv[:, 0, :, :]
-        h1 = hidv[:, 1, :, :]
-        hid = torch.cat([h0, h1], dim=2)
     return out, hid
 
 
