@@ -27,10 +27,9 @@ def init_optimizers(encoder, decoder, lr):
     return opt0, opt1
 
 
-def train_iters(encoder, decoder, data_file, n_iters, batch_size, device,
-                lr=0.01, lr_update_every=2000,
-                tf_ratio=0.5,
-                print_interval=1000, plot_interval=100):
+def train(encoder, decoder, data_file, n_iters, batch_size, device,
+          lr=0.01, lr_update_every=2000,
+          tf_ratio=0.5, print_interval=1000, plot_interval=100):
     logger.info('Training for {0} steps'.format(n_iters))
     logger.info('Collect loss for plotting every {print_interval} steps')
 
