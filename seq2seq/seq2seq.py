@@ -83,9 +83,9 @@ def main():
                        plot_attn_interval=args.plot_attn_interval)
 
     hist_out = os.path.join(args.outdir, 'hist.csv')
-    logger.info('writing {hist_out} ...')
+    logger.info(f'writing {hist_out} ...')
     with open(hist_out, 'wt') as opf:
-        opf.write('iter,batch_loss\n')
+        opf.write('iter,loss\n')
         for k, i in enumerate(hist):
             opf.write(f'{args.print_loss_interval * (k+1)},{i}\n')
 
