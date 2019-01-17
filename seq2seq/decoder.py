@@ -96,7 +96,7 @@ class AttnDecoderRNN(nn.Module):
         # TODO: alternatively, maybe try this version
         # gru_out if of seq_len, so [0] is equivalent to squeeze the first dim
         # ctx_cat = torch.cat([ctx, gru_out[0]], dim=1)
-        ctx_out = F.tanh(self.mat_ctx(ctx_cat))
+        ctx_out = torch.tanh(self.mat_ctx(ctx_cat))
 
         out = F.log_softmax(self.mat_stm(ctx_out), dim=1)
         return out, gru_hid, attn_weig
