@@ -6,6 +6,7 @@ import logging
 import torch
 import torch.nn as nn
 from torch import optim
+import numpy as np
 
 from seq2seq.data import prep_training_data
 from seq2seq.evaluate import evaluate_randomly
@@ -37,11 +38,13 @@ def encode(encoder, data_batch, encoder_optim):
 def init_beg_token(lang, batch_size):
     """
     for batch_size of 2, the return value will be like
-    tensor([[0],
-           [0]])
+    tensor([[0, 0]])
     """
     idx = lang.token2index[lang.beg_token]
-    torch.tensor([[idx] * batch_size]).view(-1, 1)
+    # repeat method in torch not found
+    # reshape following convention: L x B
+    arr = np.repeat([[idx]], batch_size, axis=1)
+    return torch.tensor(arr)
 
 
 def train(encoder, decoder, data_batch, encoder_optim, decoder_optim,
