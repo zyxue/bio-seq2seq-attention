@@ -75,7 +75,7 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
             loss_hist.append(loss_i)
 
             percent = idx / n_iters
-            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}) iters: {loss_i:.4f}')
+            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.1%}) iters: {loss_i:.4f}')
             loss_i = 0
 
         # if idx % plot_every == 0:
