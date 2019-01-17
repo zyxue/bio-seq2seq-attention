@@ -75,7 +75,7 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
             loss_hist.append(loss_i)
 
             percent = idx / n_iters
-            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}): {loss_i:.4f}')
+            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}) iters: {loss_i:.4f}')
             loss_i = 0
 
         # if idx % plot_every == 0:
@@ -91,6 +91,4 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
         #         enc_scheduler.optimizer.param_groups[0]['lr']
         #     ))
 
-        loss_hist.append(loss_b)
-
-    return print_losses
+    return loss_hist

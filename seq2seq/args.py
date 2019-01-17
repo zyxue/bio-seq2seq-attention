@@ -40,7 +40,7 @@ def parse_args():
         help='learning rate'
     )
     parser.add_argument(
-        '-o', '--outdir', type=str,
+        '-o', '--outdir', type=str, default='.',
         help='output directory'
     )
     parser.add_argument(
@@ -52,7 +52,7 @@ def parse_args():
         help='how often teacher enforcing should be used for a batch'
     )
     parser.add_argument(
-        '--print-loss-interval', type=int, default=100,
+        '--print-loss-interval', type=int, default=30,
         help='print interval in number of training steps'
     )
 
