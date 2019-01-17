@@ -40,7 +40,12 @@ def train_iters(encoder, decoder, data_file, n_iters, batch_size, device,
 
     # TODO: remove assert, maybe add an pad_token to Language class
     assert decoder.language.unk_token_index == 2
-    loss_func = nn.NLLLoss(ignore_index=decoder.language.unk_token_index)
+    loss_func = nn.NLLLoss(
+        # ignore padding tokens
+        ignore_index=decoder.language.unk_token_index,
+        # set to none because average will be taken over variable lengths
+        reduction='none'
+    )
 
     data_iter = prep_training_data(
         encoder.language, decoder.language, data_file, batch_size, device)
