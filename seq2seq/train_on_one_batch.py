@@ -47,9 +47,8 @@ def decode(decoder, data_batch, encoder_out, encoder_hidden, loss_func,
     """
     :param tf_ratio: teacher enforcing ratio
     """
-    # TODO: seq_lens will be used to mask out padding loss
     seq0s, seq1s, seq_lens = data_batch  # all in indices
-    seq_len, batch_size = seq0s.shape
+    padded_seq_len, batch_size = seq0s.shape
 
     # init the first output token for the decoder, L x B and L=1
     inp = init_decoder_input(decoder.language, batch_size, device=seq0s.device)
@@ -58,22 +57,22 @@ def decode(decoder, data_batch, encoder_out, encoder_hidden, loss_func,
     hid = encoder_hidden
 
     tf_ratio = 0
-    loss = 0
-    for i in range(seq_len):
+    loss = torch.zeros(batch_size, device=seq0s.device)
+    for i in range(padded_seq_len):
         out, hid, attn = decoder(inp, hid, encoder_out)
 
         # out.shape: B x C
         # seq1s.shape: L x B
-        loss += loss_func(out, seq1s[i])
+        _l = loss_func(out, seq1s[i])  # padded tokens will have 0 loss
+        loss += _l
 
         if use_tf(tf_ratio):
             inp = seq1s[i]
         else:
             inp = torch.argmax(out, dim=1).unsqueeze(dim=0)
 
-    # TODO: mask loss incurred from padding
-    loss /= seq_len
-    return loss
+    mean_loss = torch.mean(loss / seq_lens.float())
+    return mean_loss
 
 
 def train_on_one_batch(encoder, decoder, encoder_optim, decoder_optim,
