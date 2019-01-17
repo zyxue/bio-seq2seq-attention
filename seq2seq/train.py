@@ -78,12 +78,6 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
             logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}) iters: {loss_i:.4f}')
             loss_i = 0
 
-        # collect history of last bit
-        loss_i /= print_loss_interval
-        loss_hist.append(loss_i)
-        percent = idx / n_iters
-        logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}) iters: {loss_i:.4f}')
-
         # if idx % plot_every == 0:
         #     evaluate_randomly(
         #         lang0, lang1, enc, dec, lang1_beg_token_index, 1, idx)
