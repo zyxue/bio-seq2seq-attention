@@ -70,14 +70,16 @@ def main():
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
-    hist = train.train(enc, dec,
-                       args.data_file,
-                       args.num_iters,
-                       args.batch_size,
-                       device,
-                       args.learning_rate,
-                       args.print_interval,
-                       args.plot_interval)
+    hist = train.train(encoder=enc,
+                       decoder=dec,
+                       data_file=args.data_file,
+                       n_iters=args.num_iters,
+                       batch_size=args.batch_size,
+                       device=device,
+                       tf_ratio=args.teacher_forcing_ratio,
+                       lr=args.learning_rate,
+                       print_loss_interval=args.print_loss_interval,
+                       plot_attn_interval=args.plot_attn_interval)
 
 
 if __name__ == "__main__":

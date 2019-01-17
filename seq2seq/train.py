@@ -1,3 +1,6 @@
+import time
+import math
+from datetime import timedelta
 import logging
 
 import torch.nn as nn
@@ -27,13 +30,20 @@ def init_optimizers(encoder, decoder, lr):
     return opt0, opt1
 
 
-def train(encoder, decoder, data_file, n_iters, batch_size, device,
-          lr=0.01, lr_update_every=2000,
-          tf_ratio=0.5, print_interval=1000, plot_interval=100):
-    logger.info('Training for {0} steps'.format(n_iters))
-    logger.info('Collect loss for plotting every {print_interval} steps')
+def time_since(since, percent):
+    now = time.time()
+    passed = int(now - since)
 
-    log_plot(plot_interval)
+    # estimate total time
+    total = passed / percent
+
+    remained = int(total - passed)
+    return f'time passed: {timedelta(seconds=passed)}, remaining: {timedelta(seconds=remained)}'
+
+
+def train(encoder, decoder, data_file, n_iters, batch_size, device,
+          lr, tf_ratio, print_loss_interval, plot_attn_interval):
+    log_plot(plot_attn_interval)
 
     encoder_optim, decoder_optim = init_optimizers(encoder, decoder, lr)
 
@@ -49,28 +59,24 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
     data_iter = prep_training_data(
         encoder.language, decoder.language, data_file, batch_size, device)
 
-    # print_loss_total = 0
-    print_losses = []
-
+    loss_hist = []              # loss history
+    loss_i = 0                  # loss total within print_loss_interval
+    start = time.time()
     for idx in range(1, n_iters + 1):
         batch = next(data_iter)
-        loss = train_on_one_batch(
+        # loss_b: batch loss
+        loss_b = train_on_one_batch(
             encoder, decoder, encoder_optim, decoder_optim,
-            batch, loss_func, tf_ratio=0.5,
-        )
-        print(loss)
+            batch, loss_func, tf_ratio=0.5)
+        loss_i += loss_b
 
-        # print_loss_total += loss
+        if idx % print_loss_interval == 0:
+            loss_i /= print_loss_interval
+            loss_hist.append(loss_i)
 
-        # if idx % print_every == 0:
-        #     print_loss_avg = print_loss_total / print_every
-        #     print_losses.append(print_loss_avg)
-        #     print_loss_total = 0
-        #     print('%s (%d %d%%) %.4f' % (
-        #         time_since(start, idx / n_iters),
-        #         idx,
-        #         idx / n_iters * 100,
-        #         print_loss_avg))
+            percent = idx / n_iters
+            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.3%}): {loss_i:.4f}')
+            loss_i = 0
 
         # if idx % plot_every == 0:
         #     evaluate_randomly(
@@ -84,5 +90,7 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
         #         enc_scheduler.optimizer.param_groups[0]['lr'],
         #         enc_scheduler.optimizer.param_groups[0]['lr']
         #     ))
+
+        loss_hist.append(loss_b)
 
     return print_losses
