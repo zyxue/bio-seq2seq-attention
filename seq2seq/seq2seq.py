@@ -82,6 +82,7 @@ def main():
                        print_loss_interval=args.print_loss_interval,
                        plot_attn_interval=args.plot_attn_interval)
 
+    os.makedirs(args.outdir, exist_ok=True)
     hist_out = os.path.join(args.outdir, 'hist.csv')
     logger.info(f'writing {hist_out} ...')
     with open(hist_out, 'wt') as opf:
