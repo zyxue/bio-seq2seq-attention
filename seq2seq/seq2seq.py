@@ -24,6 +24,7 @@ def log_args(args):
         'batch_size',
         'num_hidden_layers',
         'bidirectional',
+        'outdir'
     ]:
         logger.info(f'    {attr}:\t{getattr(args, attr)}')
 
