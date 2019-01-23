@@ -92,4 +92,4 @@ def train_on_one_batch(encoder, decoder, encoder_optim, decoder_optim,
     encoder_optim.step()
     decoder_optim.step()
 
-    return loss
+    return loss.item()
