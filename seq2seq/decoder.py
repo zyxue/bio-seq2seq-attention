@@ -3,6 +3,32 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class MLPDecoder(nn.Module):
+    def __init__(self, language, hidden_size, num_layers):
+        super(MLP, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.output_size = language.num_tokens
+
+        self.W_hidden_list = [
+            nn.Linear(self.hidden_size, self.hidden_size) for _ in num_layers
+        ]
+        self.W_out = nn.Linear(self.hidden_size, self.output_size)
+
+    def forward(self, input):
+        """input are the output of RNN outputs per time step"""
+        out = None
+        for W in self.W_hidden_list:
+            if out is None:
+                out = W(input)
+            else:
+                out = W(out)
+            out = torch.relu(out)
+        out = self.W_out(out)
+        out = F.log_softmax(out)
+        return out
+
+
 class AttnDecoderRNN(nn.Module):
     def __init__(self, language, embedding_dim, hidden_size, num_layers,
                  dropout_p=0.1):
