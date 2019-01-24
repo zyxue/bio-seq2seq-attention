@@ -42,7 +42,7 @@ def time_since(since, percent):
 
 
 def train(encoder, decoder, data_file, n_iters, batch_size, device,
-          lr, tf_ratio, print_loss_interval, plot_attn_interval):
+          lr, tf_ratio, print_loss_interval, plot_attn_interval, architecture):
     log_plot(plot_attn_interval)
 
     encoder_optim, decoder_optim = init_optimizers(encoder, decoder, lr)
@@ -72,7 +72,8 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
         # loss_b: batch loss
         loss_b = train_on_one_batch(encoder, decoder,
                                     encoder_optim, decoder_optim,
-                                    batch, loss_func, tf_ratio=0.5)
+                                    batch, loss_func, tf_ratio=0.5,
+                                    architecture=architecture)
         loss_i += loss_b
 
         if idx % print_loss_interval == 0:
