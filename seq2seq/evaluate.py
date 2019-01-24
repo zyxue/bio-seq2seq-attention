@@ -2,7 +2,7 @@ import random
 import torch
 
 from seq2seq.plot import plot_attn
-from seq2seq.utils import tensor_from_sentence, get_device
+# from seq2seq.utils import tensor_from_sentence, get_device
 
 
 def evaluate(src_lang, tgt_lang, enc, dec, tgt_sos_index, src_seq, seq_len):
