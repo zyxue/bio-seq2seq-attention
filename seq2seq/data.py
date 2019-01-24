@@ -1,4 +1,35 @@
 import torch
+from torch.utils.data import Dataset
+import pandas as pd
+from tqdm import tqdm
+
+
+class SeqData(Dataset):
+    def __init__(self, lang0, lang1, csv_file):
+        self.lang0 = lang0
+        self.lang1 = lang1
+
+        res = []
+        with open(csv_file, 'rt') as inf:
+            for k, line in tqdm(enumerate(inf)):
+                if k % 2 == 0:
+                    seq, _ = line.strip().split()
+                    _r = [seq]
+                else:
+                    lab, _ = line.strip().split()
+                    _r.append(lab)
+                    res.append(_r)
+        self.data_frame = pd.DataFrame(res, columns=['seq', 'lab'])
+
+    def __len__(self):
+        return self.data_frame.shape[0]
+
+    def __getitem__(self, idx):
+        seq, lab = self.data_frame.iloc[idx].values.tolist()
+        seq_idx = self.lang0.seq2indices(seq)
+        lab_idx = self.lang1.seq2indices(lab)
+        return [seq_idx, lab_idx]
+
 
 
 def pad_seqs(seqs):
