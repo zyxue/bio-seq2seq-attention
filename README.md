@@ -17,6 +17,7 @@ E: embedding size
 H: hidden size
 D: num_directions
 Y: num_hidden_layers
+C: num_tokens/classes
 ```
 
 #### Development
