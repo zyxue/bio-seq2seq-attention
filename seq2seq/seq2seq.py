@@ -44,7 +44,7 @@ def main():
     device = U.get_device(options.device)
     logger.info(f'found device: {device}')
 
-    log_args(args)
+    log_args(options)
 
     logger.info(f'loading languages from {options.config}')
     lang0, lang1 = gen_langs(options.config)
@@ -61,8 +61,6 @@ def main():
 
     num_directions = 2 if options.bidirectional else 1
 
-    dec = MLP
-
     if options.architecture == "encoder-decode":
         dec = decoder.AttnDecoderRNN(lang1,
                                      options.embedding_dim,
@@ -70,7 +68,7 @@ def main():
                                      options.hidden_size * num_directions,
                                      options.num_hidden_layers,
                                      dropout_p=0.1)
-    elif options.architecture == "RNN+MLP":
+    elif options.architecture == "rnn+mlp":
         dec = decoder.MLPDecoder(lang1,
                                  options.hidden_size * num_directions,
                                  options.num_hidden_layers)
