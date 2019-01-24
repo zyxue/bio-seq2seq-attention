@@ -27,7 +27,7 @@ class MLPDecoder(nn.Module):
                 out = W(out)
             out = torch.relu(out)
         out = self.W_out(out)
-        out = F.log_softmax(out)
+        out = F.log_softmax(out, dim=1)
         return out
 
 
