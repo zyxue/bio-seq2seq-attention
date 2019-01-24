@@ -9,7 +9,7 @@ def decode(decoder, data_batch, encoder_out, loss_func):
 
     for i in range(padded_seq_len):
         inp = encoder_out[i]
-        out, hid, attn = decoder(inp)
+        out = decoder(inp)
 
         # out.shape: B x C
         # seq1s.shape: L x B
