@@ -6,7 +6,7 @@ def parse_args():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        '--architecture', type=str, choices=['encoder-decoder', 'RNN+MLP'],
+        '--architecture', type=str, choices=['encoder-decoder', 'rnn+mlp'],
         help='choose which architecture to use'
     )
     parser.add_argument(
