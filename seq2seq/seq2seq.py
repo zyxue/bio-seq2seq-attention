@@ -73,7 +73,7 @@ def main():
                                  options.hidden_size * num_directions,
                                  options.num_hidden_layers)
 
-    dec.to(device)
+    dec = dec.to(device)
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
