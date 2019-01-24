@@ -5,7 +5,10 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-
+    parser.add_argument(
+        '--architecture', type=str, choices=['encoder-decoder', 'RNN+MLP'],
+        help='choose which architecture to use'
+    )
     parser.add_argument(
         '-f', '--data-file', type=str, required=True,
         help='input file with training data'
