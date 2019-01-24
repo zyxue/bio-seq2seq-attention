@@ -39,57 +39,65 @@ def gen_langs(lang_config_json):
 
 
 def main():
-    args = parse_args()
+    options = parse_args()
 
-    device = U.get_device(args.device)
+    device = U.get_device(options.device)
     logger.info(f'found device: {device}')
 
     log_args(args)
 
-    logger.info(f'loading languages from {args.config}')
-    lang0, lang1 = gen_langs(args.config)
+    logger.info(f'loading languages from {options.config}')
+    lang0, lang1 = gen_langs(options.config)
 
     enc = encoder.EncoderRNN(
         lang0,
-        args.embedding_dim,
-        args.hidden_size,
-        args.num_hidden_layers,
-        args.bidirectional,
+        options.embedding_dim,
+        options.hidden_size,
+        options.num_hidden_layers,
+        options.bidirectional,
     )
     enc = enc.to(device)
     logger.info(f'encoder => \n{enc}')
 
-    num_directions = 2 if args.bidirectional else 1
-    dec = decoder.AttnDecoderRNN(
-        lang1,
-        args.embedding_dim,
-        # adjust decoder architecture accordingly based on num_directions
-        args.hidden_size * num_directions,
-        args.num_hidden_layers,
-        dropout_p=0.1
-    )
+    num_directions = 2 if options.bidirectional else 1
+
+    dec = MLP
+
+    if options.architecture == "encoder-decode":
+        dec = decoder.AttnDecoderRNN(lang1,
+                                     options.embedding_dim,
+                                     # adjust decoder architecture accordingly based on num_directions
+                                     options.hidden_size * num_directions,
+                                     options.num_hidden_layers,
+                                     dropout_p=0.1)
+    elif options.architecture == "RNN+MLP":
+        dec = decoder.MLPDecoder(lang1,
+                                 options.hidden_size * num_directions,
+                                 options.num_hidden_layers)
+
     dec.to(device)
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
     hist = train.train(encoder=enc,
                        decoder=dec,
-                       data_file=args.data_file,
-                       n_iters=args.num_iters,
-                       batch_size=args.batch_size,
+                       data_file=options.data_file,
+                       n_iters=options.num_iters,
+                       batch_size=options.batch_size,
                        device=device,
-                       tf_ratio=args.teacher_forcing_ratio,
-                       lr=args.learning_rate,
-                       print_loss_interval=args.print_loss_interval,
-                       plot_attn_interval=args.plot_attn_interval)
+                       tf_ratio=options.teacher_forcing_ratio,
+                       lr=options.learning_rate,
+                       print_loss_interval=options.print_loss_interval,
+                       plot_attn_interval=options.plot_attn_interval,
+                       architecture=options.architecture)
 
-    os.makedirs(args.outdir, exist_ok=True)
-    hist_out = os.path.join(args.outdir, 'hist.csv')
+    os.makedirs(options.outdir, exist_ok=True)
+    hist_out = os.path.join(options.outdir, 'hist.csv')
     logger.info(f'writing {hist_out} ...')
     with open(hist_out, 'wt') as opf:
         opf.write('iter,loss\n')
         for k, i in enumerate(hist):
-            opf.write(f'{args.print_loss_interval * (k+1)},{i}\n')
+            opf.write(f'{options.print_loss_interval * (k+1)},{i}\n')
 
 
 if __name__ == "__main__":
