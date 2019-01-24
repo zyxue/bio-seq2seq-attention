@@ -1,1 +1,9 @@
-__pycache__
+*.ipynb
+.eggs/
+*.egg-info/
+__pycache__/
+__results/
+
+.ipynb_checkpoints/
+# ignore simulated data
+tests/*.csv
