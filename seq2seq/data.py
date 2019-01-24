@@ -1,11 +1,17 @@
+import logging
+
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 
+logger = logging.getLogger(__name__)
+
+
 class SeqData(Dataset):
     def __init__(self, csv_file):
         res = []
+        logger.info(f'reading {csv_file} ...')
         with open(csv_file, 'rt') as inf:
             for k, line in tqdm(enumerate(inf)):
                 if k % 2 == 0:
