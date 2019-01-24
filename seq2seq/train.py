@@ -1,13 +1,13 @@
 import time
-import math
 from datetime import timedelta
 import logging
 
+import torch
 import torch.nn as nn
 from torch import optim
 
 
-from seq2seq.data import prep_training_data
+from seq2seq.data import SeqData
 from seq2seq.train_on_one_batch import train_on_one_batch
 
 from seq2seq.evaluate import evaluate_randomly
@@ -56,18 +56,23 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
         reduction='none'
     )
 
-    data_iter = prep_training_data(
-        encoder.language, decoder.language, data_file, batch_size, device)
+    data_iter = SeqData(data_file)
+    data_len = len(data_iter)
 
     loss_hist = []              # loss history
     loss_i = 0                  # loss total within print_loss_interval
     start = time.time()
     for idx in range(1, n_iters + 1):
-        batch = next(data_iter)
+        batch = torch.tensor(data_iter[(idx - 1) % data_len], device=device)
+        _seq = batch[0].unsqueeze(dim=1)
+        _lab = batch[1].unsqueeze(dim=1)
+        _len = torch.tensor([_seq.shape[0]], device=device)
+        batch = [_seq, _lab, _len]
+
         # loss_b: batch loss
-        loss_b = train_on_one_batch(
-            encoder, decoder, encoder_optim, decoder_optim,
-            batch, loss_func, tf_ratio=0.5)
+        loss_b = train_on_one_batch(encoder, decoder,
+                                    encoder_optim, decoder_optim,
+                                    batch, loss_func, tf_ratio=0.5)
         loss_i += loss_b
 
         if idx % print_loss_interval == 0:
