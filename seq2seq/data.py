@@ -30,6 +30,8 @@ class SeqData(Dataset):
         return self.data[idx]
 
 
+# Below should be deprecated somewhen
+
 def pad_seqs(seqs):
     max_len = max(len(i) for i in seqs)
 
