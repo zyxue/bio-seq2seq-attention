@@ -2,8 +2,9 @@ import os
 import json
 import logging
 
+from torch import nn
+
 from seq2seq.encoders import EncoderRNN
-from seq2seq.decoders import MLPDecoder
 from seq2seq import train
 from seq2seq.args import parse_args
 from seq2seq.objs import Language
@@ -57,10 +58,16 @@ def main():
 
     num_directions = 2          # bidirectional
 
-    dec = MLPDecoder(lang1,
-                     options.hidden_size * num_directions,
-                     options.num_hidden_layers,
-                     device=device)
+    # Just have a MLP decoder with fixed num of layers for now
+    hh = options.hidden_size * num_directions
+    dec = nn.Sequential(
+        nn.Linear(hh, hh),
+        nn.ReLU(),
+        nn.Linear(hh, hh),
+        nn.ReLU(),
+        nn.Linear(hh, lang1.num_tokens),
+    ).to(device)
+    dec.language = lang1  # just for compatbility with attn decoder, remove later
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
@@ -70,8 +77,7 @@ def main():
                        options.num_iters,
                        options.batch_size,
                        options.learning_rate,
-                       options.print_loss_interval,
-                       device=device)
+                       options.print_loss_interval)
 
     os.makedirs(options.outdir, exist_ok=True)
     hist_out = os.path.join(options.outdir, 'hist.csv')
