@@ -39,7 +39,8 @@ def time_since(since, percent):
 
 
 def train(encoder, decoder, data_file, num_iters, batch_size, lr,
-          print_loss_interval, device):
+          print_loss_interval):
+    device = encoder.device
     encoder_optim, decoder_optim = init_optimizers(encoder, decoder, lr)
 
     # TODO: remove assert, maybe add an pad_token to Language class
