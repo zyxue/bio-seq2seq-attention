@@ -10,9 +10,6 @@ from torch import optim
 from seq2seq.data import SeqData
 from seq2seq.train_on_one_batch import train_on_one_batch
 
-from seq2seq.evaluate import evaluate_randomly
-import seq2seq.utils as U
-
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +38,8 @@ def time_since(since, percent):
     return f'time passed: {timedelta(seconds=passed)}, remaining: {timedelta(seconds=remained)}'
 
 
-def train(encoder, decoder, data_file, n_iters, batch_size, device,
-          lr, tf_ratio, print_loss_interval, plot_attn_interval, architecture):
-    log_plot(plot_attn_interval)
-
+def train(encoder, decoder, data_file, num_iters, batch_size, lr,
+          print_loss_interval, device):
     encoder_optim, decoder_optim = init_optimizers(encoder, decoder, lr)
 
     # TODO: remove assert, maybe add an pad_token to Language class
@@ -56,32 +51,30 @@ def train(encoder, decoder, data_file, n_iters, batch_size, device,
         reduction='none'
     )
 
-    data_iter = SeqData(data_file)
+    data_iter = SeqData(data_file, device)
     data_len = len(data_iter)
 
     loss_hist = []              # loss history
     loss_i = 0                  # loss total within print_loss_interval
     start = time.time()
-    for idx in range(1, n_iters + 1):
-        batch = torch.tensor(data_iter[(idx - 1) % data_len], device=device)
+    for idx in range(1, num_iters + 1):
+        batch = data_iter[(idx - 1) % data_len]
         _seq = batch[0].unsqueeze(dim=1)
         _lab = batch[1].unsqueeze(dim=1)
         _len = torch.tensor([_seq.shape[0]], device=device)
         batch = [_seq, _lab, _len]
 
         # loss_b: batch loss
-        loss_b = train_on_one_batch(encoder, decoder,
-                                    encoder_optim, decoder_optim,
-                                    batch, loss_func, tf_ratio=0.5,
-                                    architecture=architecture)
+        loss_b = train_on_one_batch(encoder, decoder, encoder_optim,
+                                    decoder_optim, batch, loss_func)
         loss_i += loss_b
 
         if idx % print_loss_interval == 0:
             loss_i /= print_loss_interval
             loss_hist.append(loss_i)
 
-            percent = idx / n_iters
-            logger.info(f'{time_since(start, percent)} {idx:d}/{n_iters}({percent:.1%}) iters: {loss_i:.4f}')
+            percent = idx / num_iters
+            logger.info(f'{time_since(start, percent)} {idx:d}/{num_iters}({percent:.1%}) iters: {loss_i:.4f}')
             loss_i = 0
 
         # if idx % plot_every == 0:

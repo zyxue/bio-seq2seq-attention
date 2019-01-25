@@ -2,8 +2,8 @@ import os
 import json
 import logging
 
-from seq2seq import encoder
-from seq2seq import decoder
+from seq2seq.encoders import EncoderRNN
+from seq2seq.decoders import MLPDecoder
 from seq2seq import train
 from seq2seq.args import parse_args
 from seq2seq.objs import Language
@@ -23,7 +23,6 @@ def log_args(args):
         'hidden_size',
         'batch_size',
         'num_hidden_layers',
-        'bidirectional',
         'outdir'
     ]:
         logger.info(f'    {attr}:\t{getattr(args, attr)}')
@@ -49,45 +48,30 @@ def main():
     logger.info(f'loading languages from {options.config}')
     lang0, lang1 = gen_langs(options.config)
 
-    enc = encoder.EncoderRNN(
-        lang0,
-        options.embedding_dim,
-        options.hidden_size,
-        options.num_hidden_layers,
-        options.bidirectional,
-    )
-    enc = enc.to(device)
+    enc = EncoderRNN(lang0,
+                     options.embedding_dim,
+                     options.hidden_size,
+                     options.num_hidden_layers,
+                     device=device)
     logger.info(f'encoder => \n{enc}')
 
-    num_directions = 2 if options.bidirectional else 1
+    num_directions = 2          # bidirectional
 
-    if options.architecture == "encoder-decode":
-        dec = decoder.AttnDecoderRNN(lang1,
-                                     options.embedding_dim,
-                                     # adjust decoder architecture accordingly based on num_directions
-                                     options.hidden_size * num_directions,
-                                     options.num_hidden_layers,
-                                     dropout_p=0.1)
-    elif options.architecture == "rnn+mlp":
-        dec = decoder.MLPDecoder(lang1,
-                                 options.hidden_size * num_directions,
-                                 options.num_hidden_layers)
-
-    dec = dec.to(device)
+    dec = MLPDecoder(lang1,
+                     options.hidden_size * num_directions,
+                     options.num_hidden_layers,
+                     device=device)
     logger.info(f'decoder => \n{dec}')
 
     logger.info('start training ...')
-    hist = train.train(encoder=enc,
-                       decoder=dec,
-                       data_file=options.data_file,
-                       n_iters=options.num_iters,
-                       batch_size=options.batch_size,
-                       device=device,
-                       tf_ratio=options.teacher_forcing_ratio,
-                       lr=options.learning_rate,
-                       print_loss_interval=options.print_loss_interval,
-                       plot_attn_interval=options.plot_attn_interval,
-                       architecture=options.architecture)
+    hist = train.train(enc,
+                       dec,
+                       options.data_file,
+                       options.num_iters,
+                       options.batch_size,
+                       options.learning_rate,
+                       options.print_loss_interval,
+                       device=device)
 
     os.makedirs(options.outdir, exist_ok=True)
     hist_out = os.path.join(options.outdir, 'hist.csv')

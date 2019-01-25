@@ -4,21 +4,23 @@ import torch.nn as nn
 
 class EncoderRNN(nn.Module):
     def __init__(self, language, embedding_dim, hidden_size, num_layers,
-                 bidirectional=False):
+                 device=None):
         super(EncoderRNN, self).__init__()
+        self.device = device
 
         # keep the language to be encoded for later convenience
         self.language = language
 
         self.hidden_size = hidden_size
         self.num_layers = num_layers
-        self.bidirectional = bidirectional
 
         self.embedding = nn.Embedding(language.num_tokens, embedding_dim)
         self.gru = nn.GRU(embedding_dim, hidden_size, num_layers,
-                          bidirectional=bidirectional)
+                          bidirectional=True)
+        if device is not None:
+            self.to(device)
 
-    def forward(self, inputs, hidden):
+    def forward(self, inputs):
         """
         size variables:
         L: seq_len
@@ -31,7 +33,7 @@ class EncoderRNN(nn.Module):
         """
         Y = self.num_layers
         H = self.hidden_size
-        D = 2 if self.bidirectional else 1
+        D = 2                   # bidirectional
 
         L, B = inputs.shape
 
@@ -42,10 +44,7 @@ class EncoderRNN(nn.Module):
 
         # out.shape: L x B x (D * H)
         # hid.shape: (D * Y) x B x H
-        out, hid = self.gru(emb, hidden)
-
-        if not self.bidirectional:
-            return hid
+        out, hid = self.gru(emb)
 
         # concat hidden neurons from two RNN per layer
         hid = hid.view(Y, D, B, H)
@@ -54,10 +53,3 @@ class EncoderRNN(nn.Module):
         # hid_bi.shape: Y x B x (D * H)
         hid_bi = torch.cat([h0, h1], dim=2)
         return out, hid_bi
-
-    def init_hidden(self, batch_size, device):
-        directions = 2 if self.bidirectional else 1
-        return torch.zeros(self.num_layers * directions,
-                           batch_size,
-                           self.hidden_size,
-                           device=device)
