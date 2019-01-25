@@ -25,8 +25,8 @@ class SeqData(Dataset):
                     lab = torch.tensor(lab, device=device)
                     _r.append(lab)
                     res.append(_r)
-                if (k + 1) == 1000:
-                    break
+                # if (k + 1) == 1000:
+                #     break
         self.data = res
 
     def __len__(self):
