@@ -1,3 +1,12 @@
+# Update 2019-02-20
+
+Started trying to implement a seq-to-seq model for labelling each base of a bio
+sequence (e.g. transcript), it didn't work quite well, so currently trying to
+implement RNN+MLP architecture.
+
+-----
+
+
 My implementation of seq2seq+attention models using
 [PyTorch](https://pytorch.org/docs/stable/index.html), with
 application for biological sequences in mind.
