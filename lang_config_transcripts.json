@@ -1,0 +1,1 @@
+{"lang0": {"name": "lang0", "vocab": ["A", "C", "G", "T"], "beg_token": "^", "end_token": "$", "unk_token": "*"}, "lang1": {"name": "lang1", "vocab": ["3", "5", "C", "P"], "beg_token": "^", "end_token": "$", "unk_token": "*"}}
