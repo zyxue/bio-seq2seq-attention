@@ -1,8 +1,9 @@
 # Update 2019-02-20
 
 Started trying to implement a seq-to-seq model for labelling each base of a bio
-sequence (e.g. transcript), it didn't work quite well, so currently trying to
-implement RNN+MLP architecture.
+sequence (e.g. transcript) see tag
+[seq2seq](https://github.com/zyxue/bio-seq2seq-attention/tree/seq2seq), it
+didn't work quite well, so currently trying to implement RNN+MLP architecture.
 
 -----
 
